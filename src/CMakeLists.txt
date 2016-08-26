@@ -12,8 +12,8 @@ find_package(Boost COMPONENTS filesystem system thread serialization date_time l
 add_definitions(-D_FILE_OFFSET_BITS=64)
 add_definitions(-DFUSE_USE_VERSION=26)
 
-############################################################################
 
+############################################################################
 add_subdirectory(../../libgie/ ${PROJECT_BINARY_DIR}/extlib/gie )
 
 set(gie_include_dir ${gie_include_dir} ${libgie_SOURCE_DIR}/include)

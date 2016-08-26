@@ -11,6 +11,7 @@
 
 #include "mega_exception.hpp"
 
+#include "gie/util-scope-exit.hpp"
 #include "gie/exceptions.hpp"
 #include "gie/debug.hpp"
 
@@ -34,12 +35,19 @@ namespace gie {
             };
             virtual void onRequestFinish(mega::MegaApi* api, mega::MegaRequest *request, mega::MegaError* error){
                 GIE_DEBUG_TRACE();
+
+                GIE_SCOPE_EXIT([this]{
+                    if (m_delete_on_finish) {
+                        GIE_DEBUG_LOG("Deleting 'mega_listener_t' in 'onRequestFinish()'");
+                        delete this;
+                    }
+                });
+
+
+
                 try {
                     GIE_MEGA_CHECK(*error);
 
-                    if (m_delete_on_finish) {
-                        GIE_DEBUG_LOG("Deleting 'mega_listener_t' in 'onRequestFinish()'");
-                    }
                 }catch (...){
                     m_promise.set_exception(boost::current_exception());
                 }
