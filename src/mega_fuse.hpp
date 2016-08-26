@@ -31,7 +31,14 @@ namespace gie {
         std::unique_ptr<mega::MegaWaiter> m_mega_waiter = std::make_unique<mega::MegaWaiter>();
         std::unique_ptr<mega::MegaGfxProc> m_mega_gfx_proc = std::make_unique<mega::MegaGfxProc>();
 
-        std::unique_ptr<mega::MegaClient> m_client = std::make_unique<mega::MegaClient>(this, m_mega_waiter.get(), m_mega_http_io.get(), m_mega_fs_io.get(), new mega::MegaDbAccess(), m_mega_gfx_proc.get(),  "", "");
+        std::unique_ptr<mega::MegaClient> m_client = std::make_unique<mega::MegaClient>(
+                this,
+                m_mega_waiter.get(),
+                m_mega_http_io.get(),
+                m_mega_fs_io.get(),
+                new mega::MegaDbAccess(),
+                m_mega_gfx_proc.get(),
+                "", "");
 
         explicit fuse_impl(int dummy){
             GIE_DEBUG_TRACE1(dummy);
