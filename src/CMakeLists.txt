@@ -4,7 +4,7 @@ set(proj_exe_name mgfuse)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-deprecated -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Wno-deprecated -Wno-unused-parameter")
 
 find_package(Boost COMPONENTS filesystem system thread serialization date_time locale)
 ############################################################################
@@ -22,7 +22,8 @@ set(gie_link_libs ${gie_link_libs} libgie)
 ############################################################################
 
 include_directories(
-        ${CMAKE_CURRENT_BINARY_DIR} ${Boost_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${gie_include_dir} )
+        ${CMAKE_CURRENT_BINARY_DIR} ${Boost_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${gie_include_dir}
+        "${PROJECT_SOURCE_DIR}/../libs/mega/include" "${PROJECT_SOURCE_DIR}/../libs/mega/include/mega/posix")
 
 ############################################################################
 
@@ -40,4 +41,6 @@ target_link_libraries(
         ${proj_exe_name}
         ${Boost_LIBRARIES}
         ${gie_link_libs}
-        fuse)
+        fuse
+        crypto++
+        mega)
