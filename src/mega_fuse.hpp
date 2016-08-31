@@ -19,7 +19,9 @@ namespace gie {
         fuse_impl(const fuse_impl&) = delete;
         fuse_impl& operator=(const fuse_impl&) = delete;
 
-        fuse_impl(fuse_impl&& other) = default;
+        fuse_impl(fuse_impl&& other){
+            m_mega_api.swap(other.m_mega_api);
+        }
 
         explicit fuse_impl(int dummy){
             GIE_DEBUG_TRACE1(dummy);

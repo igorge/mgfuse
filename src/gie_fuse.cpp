@@ -8,12 +8,6 @@
 #include "gie_fuse.hpp"
 //================================================================================================================================================
 
-namespace gie {
-
-    fuse_operations fuse_ops{};
-
-}
-
 
 namespace {
 
@@ -161,26 +155,29 @@ namespace {
 //    int (*fgetattr) (const char *, struct stat *, struct fuse_file_info *);
 
 
-    struct fuse_ops_initer_t {
+    fuse_operations fill_fuse_ops(){
+        GIE_DEBUG_TRACE();
 
-        fuse_ops_initer_t(){
-            GIE_DEBUG_TRACE();
+        fuse_operations fuse_ops;
 
-            using ::gie::fuse_ops;
+        fuse_ops.init = fuse_op_init;
+        fuse_ops.destroy = fuse_op_destroy;
+        fuse_ops.getattr = fuse_op_getattr;
+        fuse_ops.open = fuse_op_open;
+        fuse_ops.opendir = fuse_op_opendir;
+        fuse_ops.releasedir = fuse_op_releasedir;
 
-            fuse_ops.init = fuse_op_init;
-            fuse_ops.destroy = fuse_op_destroy;
-            fuse_ops.getattr = fuse_op_getattr;
-            fuse_ops.open = fuse_op_open;
-            fuse_ops.opendir = fuse_op_opendir;
-            fuse_ops.releasedir = fuse_op_releasedir;
+        return fuse_ops;
+    }
 
-        }
-
-    };
-
-
-    fuse_ops_initer_t fuse_static_initer;
 
 }
+
+
+namespace gie {
+
+    fuse_operations fuse_ops = fill_fuse_ops();
+
+}
+
 //================================================================================================================================================
