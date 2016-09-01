@@ -78,7 +78,9 @@ namespace gie {
                 data->is_cookie_valid();
 
                 return fun(data);
-
+            } catch (gie::exception::unimplemented const& e) {
+                GIE_LOG( "\n======= UNIMPLEMENTED =======\n" << diagnostic_information(e) );
+                return -EOPNOTSUPP;
             } catch( boost::exception const & e ) {
                 GIE_LOG( "\n======= uncaught exception =======\n" << diagnostic_information(e) );
                 return -EREMOTEIO;
@@ -98,6 +100,9 @@ namespace gie {
 
                 return fun();
 
+            } catch (gie::exception::unimplemented const& e) {
+                GIE_LOG( "\n======= UNIMPLEMENTED =======\n" << diagnostic_information(e) );
+                return -EOPNOTSUPP;
             } catch( boost::exception const & e ) {
                 GIE_LOG( "\n======= uncaught exception =======\n" << diagnostic_information(e) );
                 return nullptr;
