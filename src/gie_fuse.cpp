@@ -12,37 +12,6 @@
 namespace {
 
 
-//    void * fuse_op_init (struct fuse_conn_info *conn) noexcept {
-//        GIE_DEBUG_TRACE();
-//        return fuse_void_ptr_ctx_run([&] {
-//
-//            auto const ctx = fuse_get_context();
-//            GIE_CHECK(ctx);
-//            GIE_CHECK(ctx->private_data);
-//
-//            auto const data = static_cast<::gie::fuse_i *>(ctx->private_data);
-//            data->is_cookie_valid();
-//
-//            return data;
-//        });
-//    }
-//
-//
-//
-//    void fuse_op_destroy (void * private_data) noexcept {
-//        GIE_DEBUG_TRACE();
-//        fuse_void_ptr_ctx_run([&] {
-//
-//            GIE_CHECK(private_data);
-//
-//            auto const data = static_cast<::gie::fuse_i *>(private_data);
-//            data->is_cookie_valid();
-//
-//            return nullptr;
-//        });
-//    }
-//
-//
 //
 //    int fuse_op_getattr(const char * path, struct stat *) noexcept {
 //        GIE_DEBUG_TRACE1(path);

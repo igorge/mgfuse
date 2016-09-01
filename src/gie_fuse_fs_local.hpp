@@ -44,6 +44,16 @@ namespace gie {
             return file_handle.release();
         }
 
+        void release(const char * path, fuse_file_info * fi, file_handle_type const handle ){
+            assert(path);
+            assert(fi);
+            assert(handle);
+
+            auto file = std::unique_ptr<boost::filesystem::fstream>(handle);
+
+            file->close();
+        }
+
 
         explicit fuse_fs_local(){
 

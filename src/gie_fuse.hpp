@@ -28,8 +28,11 @@ namespace gie {
     struct fuse_i : gie::cookie_checker<> {
 
         virtual int open (const char *, struct fuse_file_info *){
-            GIE_DEBUG_LOG("UNIMPLEMENTED");
-            return  -EOPNOTSUPP;
+            GIE_UNIMPLEMENTED();
+        }
+
+        virtual void release(const char *, struct fuse_file_info *){
+            GIE_UNIMPLEMENTED();
         }
 
 
@@ -52,9 +55,11 @@ namespace gie {
     private:
 
         BOOST_TTI_HAS_MEMBER_FUNCTION(open);
+        BOOST_TTI_HAS_MEMBER_FUNCTION(release);
 
-        enum evaliable_ops {
-            HAS_OPEN = has_member_function_open<FuseImplementation, file_handle_type, boost::mpl::vector<const char *,fuse_file_info*> >::value
+        enum avaliable_ops {
+            HAS_OPEN = has_member_function_open<FuseImplementation, file_handle_type, boost::mpl::vector<const char *,fuse_file_info*> >::value,
+            HAS_RELEASE = has_member_function_release<FuseImplementation, void, boost::mpl::vector<const char *,fuse_file_info*, const file_handle_type> >::value
         };
 
     private:
@@ -102,18 +107,15 @@ namespace gie {
 
             } catch (gie::exception::unimplemented const& e) {
                 GIE_LOG( "\n======= UNIMPLEMENTED =======\n" << diagnostic_information(e) );
-                return -EOPNOTSUPP;
             } catch( boost::exception const & e ) {
                 GIE_LOG( "\n======= uncaught exception =======\n" << diagnostic_information(e) );
-                return nullptr;
             } catch( std::exception const & e ) {
                 GIE_LOG( "\n======= uncaught exception =======\n" << typeid(e).name() << "\n" << e.what() );
-                return nullptr;
             } catch( ... ) {
                 GIE_LOG( "\n======= unknown uncaught exception =======" );
-                return nullptr;
             }
 
+            return nullptr;
         }
 
 
@@ -124,6 +126,42 @@ namespace gie {
             return reinterpret_cast<internal_fuse_file_handle_type>(handle); //allowed by c++11
         }
 
+        file_handle_type from_internal_fuse_handle(internal_fuse_file_handle_type const& handle) noexcept {
+            return reinterpret_cast<file_handle_type>(handle);
+        }
+
+
+
+        static void * fuse_op_init (struct fuse_conn_info *conn) noexcept {
+            GIE_DEBUG_TRACE();
+            return fuse_void_ptr_ctx_run([&] {
+
+                auto const ctx = fuse_get_context();
+                GIE_CHECK(ctx);
+                GIE_CHECK(ctx->private_data);
+
+                auto const data = static_cast<::gie::fuse_i *>(ctx->private_data);
+                data->is_cookie_valid();
+
+                return data;
+            });
+        }
+
+
+
+        static void fuse_op_destroy (void * private_data) noexcept {
+            GIE_DEBUG_TRACE();
+            fuse_void_ptr_ctx_run([&] {
+
+                GIE_CHECK(private_data);
+
+                auto const data = static_cast<::gie::fuse_i *>(private_data);
+                data->is_cookie_valid();
+
+                return nullptr;
+            });
+        }
+
         static int fuse_op_open(const char * path, struct fuse_file_info * fi) noexcept {
             GIE_DEBUG_TRACE1(path);
             return fuse_ctx_run([&](::gie::fuse_i * const data){
@@ -131,6 +169,18 @@ namespace gie {
             });
         }
 
+        static int fuse_op_release(const char * path, struct fuse_file_info * fi) noexcept {
+            GIE_DEBUG_TRACE1(path);
+            return fuse_ctx_run([&](::gie::fuse_i * const data){
+                data->release(path, fi);
+                return 0;
+            });
+        }
+
+
+        //
+        // open
+        //
 
         template<bool dummy=true>
         typename std::enable_if< HAS_OPEN && dummy, void >::type open_dispatch(const char * path, struct fuse_file_info * fi) {
@@ -143,7 +193,7 @@ namespace gie {
         }
 
 
-        virtual int open(const char * path, struct fuse_file_info * fi) override {
+        int open(const char * path, struct fuse_file_info * fi) override {
 
             GIE_CHECK(path);
             GIE_CHECK(fi);
@@ -154,18 +204,44 @@ namespace gie {
             return  0;
         }
 
+        //
+        // release
+        //
+
+        template<bool dummy=true>
+        typename std::enable_if< HAS_RELEASE && dummy, void >::type release_dispatch(const char * path, struct fuse_file_info * fi) {
+            GIE_CHECK(fi->fh);
+
+            m_fuse_imp.release(path, fi, from_internal_fuse_handle(fi->fh));
+        }
+
+        template<bool dummy=true>
+        typename std::enable_if< !HAS_RELEASE && dummy, void >::type release_dispatch(const char * path, struct fuse_file_info * fi) {
+            GIE_UNIMPLEMENTED();
+        }
+
+        void release(const char * path, struct fuse_file_info * fi) override {
+            GIE_CHECK(path);
+            GIE_CHECK(fi);
+
+            release_dispatch<>(path, fi);
+        }
+
+
 
     public:
         fuse_api_mapper_t(FuseImplementation&& fi) : m_fuse_imp(std::move(fi)) {
 
-            if(HAS_OPEN){
-                m_fuse_ops.open = fuse_op_open;
-            }
+            m_fuse_ops.init = fuse_op_init;
+            m_fuse_ops.destroy = fuse_op_destroy;
+
+            if(HAS_OPEN){ m_fuse_ops.open = fuse_op_open; } else {GIE_DEBUG_LOG("!HAS_OPEN");}
+            if(HAS_RELEASE){ m_fuse_ops.release = fuse_op_release; } else {GIE_DEBUG_LOG("!HAS_RELEASE");}
 
 
 
 
-           // m_fuse_ops.open = impl::fuse_op_open;
+            // m_fuse_ops.open = impl::fuse_op_open;
         }
 
     };
