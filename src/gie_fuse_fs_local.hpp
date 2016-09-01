@@ -55,6 +55,13 @@ namespace gie {
         }
 
 
+        int getattr(const char * path, struct stat * st){
+            assert(path);
+
+            ::stat(path, st);
+        }
+
+
         explicit fuse_fs_local(){
 
         }
