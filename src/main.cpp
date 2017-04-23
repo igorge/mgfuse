@@ -24,11 +24,10 @@ int main(int argc, char *argv[]) {
 
         GIE_CHECK(argc==2);
 
-        //gie::fuse_api_mapper_t<gie::fuse_impl> fuse_mapper(gie::fuse_impl(22));
-        auto const& fuse_mapper = gie::fuse_api_mapper_t<gie::fuse_fs_local>(gie::fuse_fs_local());
-
+        gie::fuse_api_mapper_t<gie::fuse_fs_local> fuse_mapper{gie::fuse_fs_local("/")};
+//
 //        std::array< char const *, 3 > const fuseargv = { argv[0], "-f", argv[1]};
-//        auto const& fuse_stat = fuse_main(fuseargv.size(), const_cast<char**>(fuseargv.data()), &gie::fuse_ops, &fuse_mapper);
+//        auto const& fuse_stat = fuse_main(fuseargv.size(), const_cast<char**>(fuseargv.data()), fuse_mapper.internal_fuse_operation(), &fuse_mapper);
 //        GIE_CHECK(fuse_stat==0);
     });
 

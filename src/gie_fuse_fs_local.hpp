@@ -8,6 +8,7 @@
 //================================================================================================================================================
 #include "gie/exceptions.hpp"
 #include "boost/filesystem/fstream.hpp"
+#include "boost/filesystem/operations.hpp"
 #include <fuse.h>
 //================================================================================================================================================
 namespace gie {
@@ -34,6 +35,8 @@ namespace gie {
 
         fuse_fs_local(fuse_fs_local&&) = default;
 
+        boost::filesystem::path m_root;
+
         file_handle_type open(const char * path, fuse_file_info * fi){
             assert(path);
             assert(fi);
@@ -58,11 +61,11 @@ namespace gie {
         int getattr(const char * path, struct stat * st){
             assert(path);
 
-            ::stat(path, st);
+            ::stat( (m_root / path).c_str() , st );
         }
 
 
-        explicit fuse_fs_local(){
+        explicit fuse_fs_local(boost::filesystem::path const& root) : m_root(root) {
 
         }
 

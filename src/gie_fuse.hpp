@@ -35,37 +35,60 @@ namespace gie {
             GIE_UNIMPLEMENTED();
         }
 
+        virtual int opendir(const char * path, struct fuse_file_info *){
+            GIE_UNIMPLEMENTED();
+        }
 
+    };
+
+
+    struct fuse_default_feature_detector {
+        template <class FuseImplementation>
+        struct detector {
+
+        private:
+            typedef typename FuseImplementation::file_handle_type file_handle_type;
+
+            BOOST_TTI_HAS_MEMBER_FUNCTION(open);
+            BOOST_TTI_HAS_MEMBER_FUNCTION(release);
+        public:
+
+            enum avaliable_ops {
+                HAS_OPEN = has_member_function_open<FuseImplementation, file_handle_type, boost::mpl::vector<const char *,fuse_file_info*> >::value,
+                HAS_RELEASE = has_member_function_release<FuseImplementation, void, boost::mpl::vector<const char *,fuse_file_info*, const file_handle_type> >::value
+            };
+        };
 
     };
 
 
 
 
+    template <class FuseImplementation, class Detector = fuse_default_feature_detector>
+    struct fuse_api_mapper_t: fuse_i, private Detector::template detector<FuseImplementation> {
 
-    template <class FuseImplementation>
-    struct fuse_api_mapper_t: fuse_i {
+        using detector_t = typename Detector::template detector<FuseImplementation>;
 
-        typedef decltype(fuse_file_info::fh) internal_fuse_file_handle_type;
         typedef typename FuseImplementation::file_handle_type file_handle_type;
+        typedef decltype(fuse_file_info::fh) internal_fuse_file_handle_type;
 
         fuse_api_mapper_t(const fuse_api_mapper_t&) = delete;
         fuse_api_mapper_t& operator=(const fuse_api_mapper_t&) = delete;
 
-    private:
-
-        BOOST_TTI_HAS_MEMBER_FUNCTION(open);
-        BOOST_TTI_HAS_MEMBER_FUNCTION(release);
-
         enum avaliable_ops {
-            HAS_OPEN = has_member_function_open<FuseImplementation, file_handle_type, boost::mpl::vector<const char *,fuse_file_info*> >::value,
-            HAS_RELEASE = has_member_function_release<FuseImplementation, void, boost::mpl::vector<const char *,fuse_file_info*, const file_handle_type> >::value
+            HAS_OPEN = detector_t::HAS_OPEN,
+            HAS_RELEASE = detector_t::HAS_RELEASE
         };
 
     private:
         FuseImplementation m_fuse_imp;
 
         fuse_operations m_fuse_ops{};
+
+    public:
+        fuse_operations* internal_fuse_operation(){
+            return &m_fuse_ops;
+        }
 
     private:
 
@@ -147,8 +170,6 @@ namespace gie {
             });
         }
 
-
-
         static void fuse_op_destroy (void * private_data) noexcept {
             GIE_DEBUG_TRACE();
             fuse_void_ptr_ctx_run([&] {
@@ -174,6 +195,35 @@ namespace gie {
             return fuse_ctx_run([&](::gie::fuse_i * const data){
                 data->release(path, fi);
                 return 0;
+            });
+        }
+
+        static int fuse_op_opendir(const char * path, struct fuse_file_info *) noexcept {
+            GIE_DEBUG_TRACE1(path);
+            return fuse_ctx_run([&](::gie::fuse_i * const data){
+
+                GIE_UNIMPLEMENTED();
+                return -EACCES;
+            });
+        }
+
+
+        static int fuse_op_readdir(const char * path, void *, fuse_fill_dir_t, off_t,struct fuse_file_info *) noexcept {
+            GIE_DEBUG_TRACE1(path);
+            return fuse_ctx_run([&](::gie::fuse_i * const data){
+
+                GIE_UNIMPLEMENTED();
+                return -EACCES;
+            });
+        }
+
+        static int fuse_op_releasedir(const char * path, struct fuse_file_info *) noexcept {
+            GIE_DEBUG_TRACE1(path);
+
+            return fuse_ctx_run([&](::gie::fuse_i * const data){
+
+                GIE_UNIMPLEMENTED();
+                return -EACCES;
             });
         }
 
@@ -237,6 +287,10 @@ namespace gie {
 
             if(HAS_OPEN){ m_fuse_ops.open = fuse_op_open; } else {GIE_DEBUG_LOG("!HAS_OPEN");}
             if(HAS_RELEASE){ m_fuse_ops.release = fuse_op_release; } else {GIE_DEBUG_LOG("!HAS_RELEASE");}
+
+            m_fuse_ops.opendir = fuse_op_opendir;
+            m_fuse_ops.readdir = fuse_op_readdir;
+            m_fuse_ops.releasedir = fuse_op_releasedir;
 
 
 
