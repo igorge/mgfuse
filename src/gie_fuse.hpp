@@ -42,32 +42,9 @@ namespace gie {
     };
 
 
-    struct fuse_default_feature_detector {
-        template <class FuseImplementation>
-        struct detector {
 
-        private:
-            typedef typename FuseImplementation::file_handle_type file_handle_type;
-
-            BOOST_TTI_HAS_MEMBER_FUNCTION(open);
-            BOOST_TTI_HAS_MEMBER_FUNCTION(release);
-        public:
-
-            enum avaliable_ops {
-                HAS_OPEN = has_member_function_open<FuseImplementation, file_handle_type, boost::mpl::vector<const char *,fuse_file_info*> >::value,
-                HAS_RELEASE = has_member_function_release<FuseImplementation, void, boost::mpl::vector<const char *,fuse_file_info*, const file_handle_type> >::value
-            };
-        };
-
-    };
-
-
-
-
-    template <class FuseImplementation, class Detector = fuse_default_feature_detector>
-    struct fuse_api_mapper_t: fuse_i, private Detector::template detector<FuseImplementation> {
-
-        using detector_t = typename Detector::template detector<FuseImplementation>;
+    template <class FuseImplementation>
+    struct fuse_api_mapper_t: fuse_i {
 
         typedef typename FuseImplementation::file_handle_type file_handle_type;
         typedef decltype(fuse_file_info::fh) internal_fuse_file_handle_type;
@@ -76,14 +53,22 @@ namespace gie {
         fuse_api_mapper_t& operator=(const fuse_api_mapper_t&) = delete;
 
         enum avaliable_ops {
-            HAS_OPEN = detector_t::HAS_OPEN,
-            HAS_RELEASE = detector_t::HAS_RELEASE
+            HAS_OPEN = FuseImplementation::HAS_OPEN,
+            HAS_RELEASE = FuseImplementation::HAS_RELEASE,
+
+            HAS_OPENDIR = FuseImplementation::HAS_OPENDIR,
+            HAS_RELEASEDIR = FuseImplementation::HAS_RELEASEDIR
+
         };
 
     private:
         FuseImplementation m_fuse_imp;
 
         fuse_operations m_fuse_ops{};
+
+        auto& impl(){
+            return m_fuse_imp;
+        }
 
     public:
         fuse_operations* internal_fuse_operation(){
@@ -228,53 +213,32 @@ namespace gie {
         }
 
 
-        //
-        // open
-        //
-
-        template<bool dummy=true>
-        typename std::enable_if< HAS_OPEN && dummy, void >::type open_dispatch(const char * path, struct fuse_file_info * fi) {
-            fi->fh=to_internal_fuse_handle(m_fuse_imp.open(path, fi));
-        }
-
-        template<bool dummy=true>
-        typename std::enable_if< !HAS_OPEN && dummy, void >::type open_dispatch(const char * path, struct fuse_file_info * fi) {
-            GIE_UNIMPLEMENTED();
-        }
-
-
         int open(const char * path, struct fuse_file_info * fi) override {
 
             GIE_CHECK(path);
             GIE_CHECK(fi);
             GIE_CHECK( !(fi->flags & O_CREAT) );
 
-            open_dispatch<>(path, fi);
-
-            return  0;
+            if constexpr(HAS_OPEN) {
+                return fi->fh=to_internal_fuse_handle(impl().open(path, fi));
+            } else {
+                GIE_UNIMPLEMENTED();
+            }
         }
 
         //
         // release
         //
-
-        template<bool dummy=true>
-        typename std::enable_if< HAS_RELEASE && dummy, void >::type release_dispatch(const char * path, struct fuse_file_info * fi) {
-            GIE_CHECK(fi->fh);
-
-            m_fuse_imp.release(path, fi, from_internal_fuse_handle(fi->fh));
-        }
-
-        template<bool dummy=true>
-        typename std::enable_if< !HAS_RELEASE && dummy, void >::type release_dispatch(const char * path, struct fuse_file_info * fi) {
-            GIE_UNIMPLEMENTED();
-        }
-
         void release(const char * path, struct fuse_file_info * fi) override {
             GIE_CHECK(path);
             GIE_CHECK(fi);
 
-            release_dispatch<>(path, fi);
+            if constexpr(HAS_RELEASE) {
+                GIE_CHECK(fi->fh);
+                impl().release(path, fi, from_internal_fuse_handle(fi->fh));
+            } else {
+                GIE_UNIMPLEMENTED();
+            }
         }
 
 
@@ -287,15 +251,11 @@ namespace gie {
 
             if(HAS_OPEN){ m_fuse_ops.open = fuse_op_open; } else {GIE_DEBUG_LOG("!HAS_OPEN");}
             if(HAS_RELEASE){ m_fuse_ops.release = fuse_op_release; } else {GIE_DEBUG_LOG("!HAS_RELEASE");}
+            if(HAS_OPENDIR){ m_fuse_ops.opendir = fuse_op_opendir; } else {GIE_DEBUG_LOG("!HAS_OPENDIR");}
+            if(HAS_RELEASEDIR){ m_fuse_ops.opendir = fuse_op_releasedir; } else {GIE_DEBUG_LOG("!HAS_RELEASEDIR");}
 
-            m_fuse_ops.opendir = fuse_op_opendir;
-            m_fuse_ops.readdir = fuse_op_readdir;
             m_fuse_ops.releasedir = fuse_op_releasedir;
 
-
-
-
-            // m_fuse_ops.open = impl::fuse_op_open;
         }
 
     };

@@ -28,6 +28,14 @@ namespace gie {
 
     struct fuse_fs_local{
 
+
+        enum supported_ops {
+            HAS_OPEN=true,
+            HAS_RELEASE=true,
+            HAS_OPENDIR=false,
+            HAS_RELEASEDIR=false
+        };
+
         typedef boost::filesystem::fstream * file_handle_type;
 
         fuse_fs_local(const fuse_fs_local&) = delete;

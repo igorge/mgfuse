@@ -4,7 +4,7 @@ set(proj_exe_name mgfuse)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Wno-deprecated -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -Wno-deprecated -Wno-unused-parameter")
 
 find_package(Boost COMPONENTS filesystem system thread serialization date_time locale)
 ############################################################################
@@ -25,7 +25,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-sanitize-recover")
 endif ()
-
 
 ############################################################################
 add_subdirectory(../../libgie/ ${PROJECT_BINARY_DIR}/extlib/gie )
