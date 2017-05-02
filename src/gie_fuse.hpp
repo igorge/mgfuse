@@ -183,12 +183,10 @@ namespace gie {
             });
         }
 
-        static int fuse_op_opendir(const char * path, struct fuse_file_info *) noexcept {
+        static int fuse_op_opendir(const char * path, struct fuse_file_info * fi) noexcept {
             GIE_DEBUG_TRACE1(path);
             return fuse_ctx_run([&](::gie::fuse_i * const data){
-
-                GIE_UNIMPLEMENTED();
-                return -EACCES;
+                return data->opendir(path, fi);
             });
         }
 
@@ -214,32 +212,44 @@ namespace gie {
 
 
         int open(const char * path, struct fuse_file_info * fi) override {
-
-            GIE_CHECK(path);
-            GIE_CHECK(fi);
-            GIE_CHECK( !(fi->flags & O_CREAT) );
-
             if constexpr(HAS_OPEN) {
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+                GIE_CHECK( !(fi->flags & O_CREAT) );
+
                 return fi->fh=to_internal_fuse_handle(impl().open(path, fi));
             } else {
                 GIE_UNIMPLEMENTED();
             }
         }
 
-        //
-        // release
-        //
-        void release(const char * path, struct fuse_file_info * fi) override {
-            GIE_CHECK(path);
-            GIE_CHECK(fi);
 
+        void release(const char * path, struct fuse_file_info * fi) override {
             if constexpr(HAS_RELEASE) {
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+
                 GIE_CHECK(fi->fh);
                 impl().release(path, fi, from_internal_fuse_handle(fi->fh));
             } else {
                 GIE_UNIMPLEMENTED();
             }
         }
+
+
+        int opendir(const char * path, struct fuse_file_info * fi) override {
+            if constexpr(HAS_OPENDIR) {
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+                GIE_CHECK(!fi->fh);
+
+                return fi->fh=to_internal_fuse_handle(impl().opendir(path, fi));
+            } else {
+                GIE_UNIMPLEMENTED();
+            }
+        }
+
+
 
 
 
@@ -252,9 +262,7 @@ namespace gie {
             if(HAS_OPEN){ m_fuse_ops.open = fuse_op_open; } else {GIE_DEBUG_LOG("!HAS_OPEN");}
             if(HAS_RELEASE){ m_fuse_ops.release = fuse_op_release; } else {GIE_DEBUG_LOG("!HAS_RELEASE");}
             if(HAS_OPENDIR){ m_fuse_ops.opendir = fuse_op_opendir; } else {GIE_DEBUG_LOG("!HAS_OPENDIR");}
-            if(HAS_RELEASEDIR){ m_fuse_ops.opendir = fuse_op_releasedir; } else {GIE_DEBUG_LOG("!HAS_RELEASEDIR");}
-
-            m_fuse_ops.releasedir = fuse_op_releasedir;
+            if(HAS_RELEASEDIR){ m_fuse_ops.releasedir = fuse_op_releasedir; } else {GIE_DEBUG_LOG("!HAS_RELEASEDIR");}
 
         }
 

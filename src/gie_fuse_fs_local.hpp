@@ -32,7 +32,7 @@ namespace gie {
         enum supported_ops {
             HAS_OPEN=true,
             HAS_RELEASE=true,
-            HAS_OPENDIR=false,
+            HAS_OPENDIR=true,
             HAS_RELEASEDIR=false
         };
 
@@ -70,6 +70,19 @@ namespace gie {
             assert(path);
 
             ::stat( (m_root / path).c_str() , st );
+        }
+
+
+        file_handle_type opendir(const char * path, fuse_file_info * fi){
+            assert(path);
+            assert(fi);
+
+//            auto file_handle = std::make_unique<boost::filesystem::fstream>(path, fuse_flags_to_ios(fi->flags));
+//            file_handle->exceptions(std::ios_base::badbit | std::ios_base::failbit);
+//
+//            return file_handle.release();
+
+            GIE_UNIMPLEMENTED();
         }
 
 
