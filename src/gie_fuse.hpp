@@ -74,6 +74,8 @@ namespace gie {
     template <class FuseImplementation>
     struct fuse_api_mapper_t: fuse_i {
 
+        static_assert( std::is_class<FuseImplementation>::value );
+
         typedef typename FuseImplementation::file_handle_type file_handle_type;
         typedef typename FuseImplementation::directory_handle_type directory_handle_type;
 
@@ -318,6 +320,9 @@ namespace gie {
 
                 fi->fh=to_internal_fuse_handle(impl().open(path, fi));
             } else {
+                (void)path;
+                (void)fi;
+
                 GIE_UNIMPLEMENTED();
             }
         }
@@ -331,6 +336,9 @@ namespace gie {
                 GIE_CHECK(fi->fh);
                 impl().release(path, fi, from_internal_fuse_handle(fi->fh));
             } else {
+                (void)path;
+                (void)fi;
+
                 GIE_UNIMPLEMENTED();
             }
         }
@@ -344,6 +352,9 @@ namespace gie {
 
                 fi->fh=directory_to_internal_fuse_handle(impl().opendir(path, fi));
             } else {
+                (void)path;
+                (void)fi;
+
                 GIE_UNIMPLEMENTED();
             }
         }
@@ -357,6 +368,9 @@ namespace gie {
                 GIE_CHECK(fi->fh);
                 impl().releasedir(path, fi, directory_from_internal_fuse_handle(fi->fh));
             } else {
+                (void)path;
+                (void)fi;
+
                 GIE_UNIMPLEMENTED();
             }
         }
@@ -369,6 +383,12 @@ namespace gie {
                 GIE_CHECK(fi->fh);
                 impl().readdir(path, buf, filler, offset, fi, directory_from_internal_fuse_handle(fi->fh));
             } else {
+                (void)path;
+                (void)buf;
+                (void)filler;
+                (void)offset;
+                (void)fi;
+
                 GIE_UNIMPLEMENTED();
             }
         }

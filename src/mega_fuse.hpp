@@ -15,24 +15,39 @@
 //================================================================================================================================================
 namespace gie {
 
-    struct fuse_impl : public gie::fuse_i {
-        fuse_impl(const fuse_impl&) = delete;
-        fuse_impl& operator=(const fuse_impl&) = delete;
+    struct mega_fuse_impl : public gie::fuse_i {
 
-        fuse_impl(fuse_impl&& other){
+
+        enum supported_ops {
+            HAS_GETATTR=false,
+            HAS_FGETATTR=false,
+            HAS_OPEN=false,
+            HAS_RELEASE=false,
+            HAS_OPENDIR=false,
+            HAS_RELEASEDIR=false,
+            HAS_READDIR=false
+        };
+
+
+        using file_handle_type = int;
+        using directory_handle_type = int;
+
+        mega_fuse_impl(const mega_fuse_impl&) = delete;
+        mega_fuse_impl& operator=(const mega_fuse_impl&) = delete;
+
+        mega_fuse_impl(mega_fuse_impl&& other){
             m_mega_api.swap(other.m_mega_api);
         }
 
-        explicit fuse_impl(int dummy){
-            GIE_DEBUG_TRACE1(dummy);
+        explicit mega_fuse_impl(std::string const& login, std::string const& password){
             m_mega_api->setLogLevel(mega::MegaApi::LOG_LEVEL_INFO);
 
-            auto listener = std::make_unique<mega_listener_t>();
+            auto listener = make_listener([](auto&&, auto&&){ return true;});
             auto f = listener->future();
-            m_mega_api->login("user", "password", listener.release());
-            GIE_DEBUG_LOG("waiting");
+            m_mega_api->login(login.c_str(), password.c_str(), listener.release());
+            GIE_DEBUG_LOG("waiting for login");
             f.get();
-            GIE_DEBUG_LOG("done");
+            GIE_DEBUG_LOG("login successful");
         }
 
 
