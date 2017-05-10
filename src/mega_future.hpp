@@ -92,16 +92,17 @@ namespace gie {
 
 
     template <class Fun>
-    std::unique_ptr< mega_listener_t<Fun> > make_listener(Fun&& fun, bool delete_on_finish=true){
-        static_assert(std::is_class<Fun>::value);
+    auto make_listener(Fun&& fun, bool delete_on_finish=true){
 
-        return std::make_unique< mega_listener_t<Fun> >( std::forward<Fun>(fun), delete_on_finish);
+        using FunT = std::remove_reference_t<Fun>;
+
+        static_assert(std::is_class<FunT>::value);
+
+        return std::make_unique< mega_listener_t<FunT> >( std::forward<Fun>(fun), delete_on_finish);
     }
 
 
-
-
-}
+ }
 //================================================================================================================================================
 #endif
 //================================================================================================================================================

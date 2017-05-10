@@ -12,6 +12,8 @@ find_package(Boost COMPONENTS filesystem system thread serialization date_time l
 add_definitions(-D_FILE_OFFSET_BITS=64)
 add_definitions(-DFUSE_USE_VERSION=26)
 
+add_definitions(-DBOOST_THREAD_PROVIDES_FUTURE_CONTINUATION)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message("*** Debug build. ***")
     add_definitions(-DBOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
