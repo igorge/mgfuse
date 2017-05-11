@@ -32,7 +32,7 @@ namespace gie {
         using ResultT = typename std::invoke_result<OnCompleteFun, mega::MegaApi*, mega::MegaRequest *>::type;
         boost::promise<ResultT> m_promise;
         bool m_delete_on_finish;
-        OnCompleteFun m_fun;
+        OnCompleteFun const m_fun;
 
     public:
 
