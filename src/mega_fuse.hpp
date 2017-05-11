@@ -6,10 +6,13 @@
 #ifndef H_GUARD_MEGA_FUSE_2016_08_26_03_07
 #define H_GUARD_MEGA_FUSE_2016_08_26_03_07
 //================================================================================================================================================
+#include "mega_iterator.hpp"
 #include "mega_future.hpp"
 #include "gie_fuse.hpp"
 
 #include "megaapi.h"
+
+#include <boost/range/algorithm.hpp>
 
 #include <memory>
 //================================================================================================================================================
@@ -95,10 +98,23 @@ namespace gie {
 
         auto get_node(std::unique_ptr<mega::MegaNode> const& parent, path_type const& fn) -> std::unique_ptr<mega::MegaNode> {
 
+            auto const file_name = fn.filename();
+
             if(parent){
 
+                auto const children = to_range(parent->getChildren());
+                auto const found_node = boost::find_if(children, [&](mega::MegaNode* node){
+                    return file_name==node->getName();
+                });
+
+                if(found_node==children.end()){
+                    GIE_THROW(exception::fuse_no_such_file_or_directory());
+                } else {
+                    return std::unique_ptr<mega::MegaNode>{ (*found_node)->copy()};
+                }
+
             } else {
-                assert(fn.filename()=="/");
+                assert(file_name=="/");
 
                 std::unique_ptr<mega::MegaNode> root{ mega().getRootNode() };
                 GIE_CHECK( root );
@@ -130,8 +146,14 @@ namespace gie {
 
             mutex::scoped_lock lock {impl().m_mega_lock};
 
+            auto noded = get_node("/test333/test2");
+
             auto node = get_node(path);
             if(!node) GIE_THROW(exception::fuse_no_such_file_or_directory());
+
+            for(auto i:to_range(node->getChildren())){
+                GIE_DEBUG_LOG(i->getName());
+            }
 
             *st = stat_t();
 
