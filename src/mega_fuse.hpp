@@ -6,6 +6,7 @@
 #ifndef H_GUARD_MEGA_FUSE_2016_08_26_03_07
 #define H_GUARD_MEGA_FUSE_2016_08_26_03_07
 //================================================================================================================================================
+#include "mega_node_cache.hpp"
 #include "mega_iterator.hpp"
 #include "mega_future.hpp"
 #include "gie_fuse.hpp"
@@ -76,9 +77,14 @@ namespace gie {
 
     private:
 
-        struct impl_t {
-            std::unique_ptr<mega::MegaApi> m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
+        struct impl_t : mega_node_cache_t<impl_t> {
             boost::mutex m_mega_lock;
+            std::unique_ptr<mega::MegaApi> m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
+
+            auto mega() -> mega::MegaApi& {
+                assert(m_mega_api);
+                return *m_mega_api;
+            }
         };
 
 
@@ -90,11 +96,19 @@ namespace gie {
         }
 
         auto mega() -> mega::MegaApi& {
-            assert(impl().m_mega_api);
-
-            return *impl().m_mega_api;
+            return impl().mega();
         }
 
+
+        auto authorize(std::unique_ptr<mega::MegaNode>& node) -> std::unique_ptr<mega::MegaNode>& {
+            assert(node);
+
+            std::unique_ptr<mega::MegaNode> authorized_node{ mega().authorizeNode(node.get()) };
+            GIE_CHECK(authorized_node.get());
+
+            node.swap(authorized_node);
+            return node;
+        }
 
         auto get_node(std::unique_ptr<mega::MegaNode> const& parent, path_type const& fn) -> std::unique_ptr<mega::MegaNode> {
 
@@ -119,15 +133,16 @@ namespace gie {
                 std::unique_ptr<mega::MegaNode> root{ mega().getRootNode() };
                 GIE_CHECK( root );
 
-                std::unique_ptr<mega::MegaNode> authorized_root{ mega().authorizeNode(root.get()) };
-                GIE_CHECK(authorized_root);
+                authorize(root);
 
-                return authorized_root;
+                return root;
             }
 
         }
 
         auto get_node(path_type const& path){
+
+            impl().nodes().get_node(path);
 
             std::unique_ptr<mega::MegaNode> current_node{};
 
