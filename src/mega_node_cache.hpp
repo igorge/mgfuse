@@ -24,8 +24,9 @@ namespace gie {
         struct cached_node_t;
 
         using shared_mega_node_t = std::shared_ptr<mega::MegaNode>;
+        using shared_cached_node = std::shared_ptr<cached_node_t>;
 
-        using map_t = std::map<std::string, cached_node_t>;
+        using map_t = std::map<std::string, shared_cached_node>;
 
 
         auto self() {
@@ -35,10 +36,10 @@ namespace gie {
 
         struct cached_node_t {
             shared_mega_node_t mega_node;
-            std::unique_ptr<map_t> children;
+            map_t children;
         };
 
-        cached_node_t m_root;
+        shared_cached_node m_root;
 
         auto authorize(mega::MegaNode &node) -> std::unique_ptr<mega::MegaNode> {
 
@@ -48,10 +49,15 @@ namespace gie {
 
         }
 
-        auto get_node(shared_mega_node_t const& parent, path_type const p) -> shared_mega_node_t {
-            auto const file_name = p.filename();
+        auto get_node(shared_cached_node const& parent, path_type const p) -> shared_cached_node {
+            auto const file_name = p.filename().string();
 
             if (parent) {
+
+                if(auto const& r = parent->children.find(file_name); r!=parent->children.end()){
+                    GIE_DEBUG_LOG("Mega node cache hit: "<<file_name);
+                    return r->second;
+                }
 
 //            auto const children = to_range(parent->getChildren());
 //            auto const found_node = boost::find_if(children, [&](mega::MegaNode* node){
@@ -67,16 +73,17 @@ namespace gie {
             } else {
                 assert(file_name == "/");
 
-                if(!m_root.mega_node){
-                    assert(!m_root.children);
+                if(!m_root){
+
+                    m_root = std::make_shared<cached_node_t>();
 
                     std::unique_ptr < mega::MegaNode > root{self()->mega().getRootNode()};
                     GIE_CHECK(root);
 
-                    m_root.mega_node.reset( authorize(*root).release() );
+                    m_root->mega_node.reset( authorize(*root).release() );
                 }
 
-                return m_root.mega_node;;
+                return m_root;
             }
         }
 
@@ -85,7 +92,7 @@ namespace gie {
 
         auto get_node(path_type const p) {
 
-            shared_mega_node_t current_node = nullptr;
+            shared_cached_node current_node = nullptr;
 
             for (auto &&i : p) {
                 current_node = get_node(current_node, i);
