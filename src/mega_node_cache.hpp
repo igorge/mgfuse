@@ -127,6 +127,8 @@ namespace gie {
             for (auto &&i : p) {
                 current_node = get_node(current_node, i);
             }
+
+            return current_node->mega_node;
         }
 
         auto &nodes() {

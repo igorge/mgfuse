@@ -99,58 +99,8 @@ namespace gie {
             return impl().mega();
         }
 
-
-        auto authorize(std::unique_ptr<mega::MegaNode>& node) -> std::unique_ptr<mega::MegaNode>& {
-            assert(node);
-
-            std::unique_ptr<mega::MegaNode> authorized_node{ mega().authorizeNode(node.get()) };
-            GIE_CHECK(authorized_node.get());
-
-            node.swap(authorized_node);
-            return node;
-        }
-
-        auto get_node(std::unique_ptr<mega::MegaNode> const& parent, path_type const& fn) -> std::unique_ptr<mega::MegaNode> {
-
-            auto const file_name = fn.filename();
-
-            if(parent){
-
-                auto const children = to_range(parent->getChildren());
-                auto const found_node = boost::find_if(children, [&](mega::MegaNode* node){
-                    return file_name==node->getName();
-                });
-
-                if(found_node==children.end()){
-                    GIE_THROW(exception::fuse_no_such_file_or_directory());
-                } else {
-                    return std::unique_ptr<mega::MegaNode>{ (*found_node)->copy()};
-                }
-
-            } else {
-                assert(file_name=="/");
-
-                std::unique_ptr<mega::MegaNode> root{ mega().getRootNode() };
-                GIE_CHECK( root );
-
-                authorize(root);
-
-                return root;
-            }
-
-        }
-
         auto get_node(path_type const& path){
-
-            impl().nodes().get_node(path);
-
-            std::unique_ptr<mega::MegaNode> current_node{};
-
-            for(auto&& i : path){
-                current_node = get_node(current_node, i);
-            }
-
-            return current_node;
+            return impl().nodes().get_node(path);
         }
 
     public:
@@ -161,9 +111,10 @@ namespace gie {
 
             mutex::scoped_lock lock {impl().m_mega_lock};
 
-            auto noded = get_node("/test333/test2");
+            auto node__ = get_node("/test333/test2");
 
             auto node = get_node(path);
+
             if(!node) GIE_THROW(exception::fuse_no_such_file_or_directory());
 
             for(auto i:to_range(node->getChildren())){
