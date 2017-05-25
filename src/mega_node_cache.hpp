@@ -8,7 +8,12 @@
 //================================================================================================================================================
 #pragma once
 //================================================================================================================================================
+#include "exceptions.hpp"
+#include "mega_iterator.hpp"
+
 #include "megaapi.h"
+
+#include <boost/range/algorithm.hpp>
 
 #include <memory>
 //================================================================================================================================================
@@ -50,16 +55,41 @@ namespace gie {
         }
 
         auto get_node(shared_cached_node const& parent, path_type const p) -> shared_cached_node {
-            auto const file_name = p.filename().string();
+            auto const file_name = p.filename().string();   
 
             if (parent) {
 
                 if(auto const& r = parent->children.find(file_name); r!=parent->children.end()){
                     GIE_DEBUG_LOG("Mega node cache hit: "<<file_name);
                     return r->second;
+                } else {
+                    GIE_DEBUG_LOG("Mega node cache miss: "<<file_name);
+
+                    std::unique_ptr<mega::MegaNodeList> const children{parent->mega_node->getChildren() };
+
+                    GIE_CHECK(children);
+
+                    auto const& as_range = to_range(children);
+                    auto const found_node_iter = boost::find_if(as_range, [&](mega::MegaNode* node){
+                        return file_name==node->getName();
+                    });
+
+                    GIE_CHECK_EX(found_node_iter!=as_range.end(), exception::fuse_no_such_file_or_directory() << gie::exception::error_str_einfo(file_name) );
+
+                    auto const found_node = *found_node_iter;
+                    GIE_CHECK(found_node);
+
+                    shared_mega_node_t authorized_node{authorize(*found_node).release()};
+
+                    //insert into cache
+                    auto cache_node = std::make_shared<cached_node_t>();
+                    cache_node->mega_node = std::move(authorized_node);
+
+                    parent->children.insert(std::make_pair(file_name, cache_node) );
+
+                    return cache_node;
                 }
 
-//            auto const children = to_range(parent->getChildren());
 //            auto const found_node = boost::find_if(children, [&](mega::MegaNode* node){
 //                return file_name==node->getName();
 //            });

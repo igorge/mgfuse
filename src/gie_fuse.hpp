@@ -12,6 +12,8 @@
 #include "gie/exceptions.hpp"
 #include "gie/debug.hpp"
 
+#include "exceptions.hpp"
+
 #include <boost/exception/all.hpp>
 
 #include <fuse.h>
@@ -20,21 +22,6 @@
 #include <utility>
 //================================================================================================================================================
 namespace gie {
-
-
-    namespace exception {
-
-        typedef boost::error_info< struct tag_error_fuse_einfo, int> fuse_errorno_einfo;
-
-        struct fuse_exception : virtual gie::exception::root {};
-        struct fuse_errorno_exception : virtual fuse_exception {};
-
-        struct fuse_stat_failed : virtual fuse_errorno_exception {};
-        struct fuse_no_such_file_or_directory : virtual fuse_exception {};
-    }
-
-
-
 
 
     struct fuse_i : gie::cookie_checker<> {
