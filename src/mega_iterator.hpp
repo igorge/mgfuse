@@ -77,11 +77,6 @@ namespace gie {
         return boost::make_iterator_range( mega_node_list_iterator(node_list), mega_node_list_iterator() );
     }
 
-    inline
-    auto to_range(std::unique_ptr<mega::MegaNodeList> const& node_list){
-        return to_range( node_list.get() );
-    }
-
 
 }
 //================================================================================================================================================

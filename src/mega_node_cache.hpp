@@ -22,6 +22,8 @@ namespace gie {
     template<class SelfT>
     struct mega_node_cache_t {
 
+        friend SelfT;
+
     private:
 
         using path_type = boost::filesystem::path;
@@ -38,6 +40,10 @@ namespace gie {
             return static_cast<SelfT *>(this);
         }
 
+        decltype(auto) mega(){
+            return self()->mega();
+        }
+
 
         struct cached_node_t {
             shared_mega_node_t mega_node;
@@ -46,10 +52,14 @@ namespace gie {
 
         shared_cached_node m_root;
 
+        void clear(){
+            m_root.reset();
+        }
+
         auto authorize(mega::MegaNode &node) -> std::unique_ptr<mega::MegaNode> {
 
             std::unique_ptr<mega::MegaNode> authorized_node{ self()->mega().authorizeNode(&node) };
-            GIE_CHECK(authorized_node.get());
+            GIE_CHECK(authorized_node); // failed to authorize
             return authorized_node;
 
         }
@@ -59,13 +69,15 @@ namespace gie {
 
             if (parent) {
 
+                GIE_CHECK(parent->mega_node->isFolder());
+
                 if(auto const& r = parent->children.find(file_name); r!=parent->children.end()){
                     GIE_DEBUG_LOG("Mega node cache hit: "<<file_name);
                     return r->second;
                 } else {
-                    GIE_DEBUG_LOG("Mega node cache miss: "<<file_name);
+                    GIE_DEBUG_LOG("Mega node cache miss: "<< parent->mega_node->getName() << "/" << file_name << ", parent access: " << mega().getAccess(parent->mega_node.get()) );
 
-                    std::unique_ptr<mega::MegaNodeList> const children{parent->mega_node->getChildren() };
+                    auto const children = parent->mega_node->getChildren(); // MegaNode keeps ownership
 
                     GIE_CHECK(children);
 
@@ -79,7 +91,8 @@ namespace gie {
                     auto const found_node = *found_node_iter;
                     GIE_CHECK(found_node);
 
-                    shared_mega_node_t authorized_node{authorize(*found_node).release()};
+                    //shared_mega_node_t authorized_node{authorize(*found_node).release()};
+                    shared_mega_node_t authorized_node{found_node->copy()};
 
                     //insert into cache
                     auto cache_node = std::make_shared<cached_node_t>();
@@ -89,16 +102,6 @@ namespace gie {
 
                     return cache_node;
                 }
-
-//            auto const found_node = boost::find_if(children, [&](mega::MegaNode* node){
-//                return file_name==node->getName();
-//            });
-//
-//            if(found_node==children.end()){
-//                GIE_THROW(exception::fuse_no_such_file_or_directory());
-//            } else {
-//                return std::unique_ptr<mega::MegaNode>{ (*found_node)->copy()};
-//            }
 
             } else {
                 assert(file_name == "/");
@@ -131,7 +134,7 @@ namespace gie {
             return current_node->mega_node;
         }
 
-        auto &nodes() {
+        auto& nodes() {
             return *this;
         }
 
