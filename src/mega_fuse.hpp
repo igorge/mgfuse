@@ -78,6 +78,12 @@ namespace gie {
     private:
 
         struct impl_t : mega_node_cache_t<impl_t>, gie::cookie_checker<> {
+
+            impl_t(impl_t const&) = delete;
+            impl_t& operator=(impl_t const&) = delete;
+
+            impl_t(){}
+
             boost::mutex m_mega_lock;
             std::unique_ptr<mega::MegaApi> m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
 
@@ -116,14 +122,9 @@ namespace gie {
 
             mutex::scoped_lock lock {impl().m_mega_lock};
 
-            auto node__ = get_node("/test333/run1");
-            auto node = get_node(path);
+            auto const& node = get_node(path);
 
             if(!node) GIE_THROW(exception::fuse_no_such_file_or_directory());
-
-            for(auto i:to_range(node->getChildren())){
-                GIE_DEBUG_LOG(i->getName());
-            }
 
             *st = stat_t();
 
