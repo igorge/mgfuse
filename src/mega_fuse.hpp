@@ -29,12 +29,18 @@ namespace gie {
             HAS_RELEASE=false,
             HAS_OPENDIR=true,
             HAS_RELEASEDIR=true,
-            HAS_READDIR=false
+            HAS_READDIR=true
         };
 
 
-        using file_handle_type = void*;
-        using directory_handle_type = void*;
+        struct file_handle_impl_t;
+
+        struct directory_handle_impl_t {
+            std::shared_ptr<mega::MegaNodeList> children;
+        };
+
+        using file_handle_type = file_handle_impl_t*;
+        using directory_handle_type = directory_handle_impl_t*;
 
         using path_type = boost::filesystem::path;
         using mutex = boost::mutex;
@@ -98,6 +104,7 @@ namespace gie {
             }
         };
 
+        using shared_mega_node_t = impl_t::shared_mega_node_t;
 
         std::unique_ptr<impl_t> m_impl = std::make_unique<impl_t>();
 
@@ -112,6 +119,10 @@ namespace gie {
 
         decltype(auto) get_node(path_type const& path){
             return impl().nodes().get_node(path);
+        }
+
+        auto get_children(shared_mega_node_t const& node){
+            return impl().get_children(node);
         }
 
     public:
@@ -149,12 +160,12 @@ namespace gie {
 
             mutex::scoped_lock lock {impl().m_mega_lock};
 
+            auto children = get_children(get_node(path));
+            GIE_CHECK(children);
 
+            auto handle = std::unique_ptr<directory_handle_impl_t>(new directory_handle_impl_t{children});
 
-            //auto dir = std::make_unique<directory_handle>(m_root / path);
-            GIE_UNIMPLEMENTED();
-
-            return 0;//dir.release();
+            return handle.release();
         }
 
         void releasedir(const char * path, fuse_file_info * fi, directory_handle_type const handle ){
@@ -164,8 +175,44 @@ namespace gie {
 
             mutex::scoped_lock lock {impl().m_mega_lock};
 
-            GIE_UNIMPLEMENTED();
-            //auto dir = std::unique_ptr<directory_handle>(handle);
+            auto dir = std::unique_ptr<directory_handle_impl_t>(handle);
+        }
+
+        void readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info * fi, directory_handle_type const handle) {
+
+            static_assert(std::numeric_limits<off_t>::max() >= std::numeric_limits<int>::max() );  // off_t can hold all values of mega::MegaNodeList::get index (int)
+
+            assert(path);
+            assert(fi);
+            assert(handle);
+
+            auto const num_of_entries = handle->children->size();
+
+            GIE_CHECK(offset>=0);
+            GIE_CHECK(offset <= num_of_entries);
+
+
+
+            bool filled_up = false;
+            while (!filled_up && offset != num_of_entries) {
+
+                auto const node = handle->children->get(offset);
+                GIE_CHECK(node);
+
+                auto const filename = node->getName();
+                GIE_CHECK(filename);
+                GIE_CHECK(*filename != 0); //must be non empty
+
+                if (auto const r = filler(buf, filename, nullptr, ++offset); r == 1){
+                    filled_up = true;
+                } else if (r == 0) {
+                    // do nothing
+                } else {
+                    GIE_UNEXPECTED();
+                }
+
+            }
+
         }
 
 

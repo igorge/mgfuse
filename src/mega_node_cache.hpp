@@ -24,11 +24,11 @@ namespace gie {
 
         friend SelfT;
 
+        using shared_mega_node_t = std::shared_ptr<mega::MegaNode>;
+
     private:
 
         using path_type = boost::filesystem::path;
-
-        using shared_mega_node_t = std::shared_ptr<mega::MegaNode>;
 
         mega_node_cache_t(mega_node_cache_t const&) = delete;
         mega_node_cache_t& operator=(mega_node_cache_t const&) = delete;
@@ -58,6 +58,20 @@ namespace gie {
 
         }
 
+
+    public:
+        auto get_children(shared_mega_node_t const& node){
+
+            GIE_CHECK(node->isFolder());
+
+            std::shared_ptr<mega::MegaNodeList> children { mega().getChildren(node.get()) };
+
+            GIE_CHECK(children);
+
+            return children;
+        }
+    private:
+
         auto get_node(shared_mega_node_t const& parent, path_type const p) -> shared_mega_node_t {
             auto const file_name = p.filename().string();   
 
@@ -65,7 +79,7 @@ namespace gie {
 
                 GIE_CHECK_EX(parent->isFolder(), exception::fuse_no_such_file_or_directory() << gie::exception::error_str_einfo(file_name) );
 
-                GIE_DEBUG_LOG("Mega node query: "<< parent->getName() << "/" << file_name << ", parent access: " << mega().getAccess(parent.get()) );
+//                GIE_DEBUG_LOG("Mega node query: "<< parent->getName() << "/" << file_name << ", parent access: " << mega().getAccess(parent.get()) );
 
 
                 shared_mega_node_t authorized_node{mega().getChildNode(parent.get(), file_name.c_str())};
