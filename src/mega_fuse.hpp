@@ -22,12 +22,14 @@ namespace gie {
     struct mega_fuse_impl {
 
 
+        using fuse_op_def_opendir = fuse_method_def<fuse_op_implemented>;
+
         enum supported_ops {
             HAS_GETATTR=true,
             HAS_FGETATTR=false,
             HAS_OPEN=false,
             HAS_RELEASE=false,
-            HAS_OPENDIR=true,
+//            HAS_OPENDIR=true,
             HAS_RELEASEDIR=true,
             HAS_READDIR=true
         };

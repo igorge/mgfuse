@@ -37,12 +37,14 @@ namespace gie {
     struct fuse_fs_local{
 
 
+        using fuse_op_def_opendir = fuse_method_def<fuse_op_implemented>;
+
         enum supported_ops {
             HAS_GETATTR=true,
             HAS_FGETATTR=false,
             HAS_OPEN=true,
             HAS_RELEASE=true,
-            HAS_OPENDIR=true,
+//            HAS_OPENDIR=true,
             HAS_RELEASEDIR=true,
             HAS_READDIR=true
         };
