@@ -21,18 +21,15 @@ namespace gie {
 
     struct mega_fuse_impl {
 
+        using fuse_op_def_getattr = fuse_method_def<fuse_op_implemented>;
+        using fuse_op_def_fgetattr = fuse_method_def<>;
+
+        using fuse_op_def_open = fuse_method_def<>;
+        using fuse_op_def_release = fuse_method_def<>;
 
         using fuse_op_def_opendir = fuse_method_def<fuse_op_implemented>;
-
-        enum supported_ops {
-            HAS_GETATTR=true,
-            HAS_FGETATTR=false,
-            HAS_OPEN=false,
-            HAS_RELEASE=false,
-//            HAS_OPENDIR=true,
-            HAS_RELEASEDIR=true,
-            HAS_READDIR=true
-        };
+        using fuse_op_def_releasedir = fuse_method_def<fuse_op_implemented>;
+        using fuse_op_def_readdir = fuse_method_def<fuse_op_implemented>;
 
 
         struct file_handle_impl_t;
