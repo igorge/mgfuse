@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 project(mgfuse)
 set(proj_exe_name mgfuse)
 
+#set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
+#include(cotire)
+
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -Wno-deprecated -Wno-unused-parameter")
@@ -60,3 +63,5 @@ target_link_libraries(
         #crypto++
         mega
 )
+
+#cotire(mgfuse)

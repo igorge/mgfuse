@@ -162,7 +162,7 @@ namespace gie {
             auto children = get_children(get_node(path));
             GIE_CHECK(children);
 
-            auto handle = std::unique_ptr<directory_handle_impl_t>(new directory_handle_impl_t{children});
+             auto handle = std::unique_ptr<directory_handle_impl_t>(new directory_handle_impl_t{children});
 
             return handle.release();
         }
