@@ -52,6 +52,12 @@ include_directories(
 
 ############################################################################
 
+set(HEADER_FILES
+        mega_node_cache.hpp
+        gie_fuse.hpp
+        gie_fuse_fs_local.hpp
+        mega_fuse.hpp)
+
 
 set(SOURCE_FILES
         main.cpp)
@@ -59,7 +65,7 @@ set(SOURCE_FILES
 
 ############################################################################
 
-add_executable(mgfuse ${SOURCE_FILES})
+add_executable(mgfuse ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries(
         ${proj_exe_name}

@@ -31,6 +31,7 @@ namespace gie {
         using fuse_op_def_releasedir = fuse_method_def<fuse_op_implemented>;
         using fuse_op_def_readdir = fuse_method_def<fuse_op_implemented>;
 
+        using fuse_op_def_mkdir = fuse_method_def<fuse_op_implemented>;
 
         struct file_handle_impl_t;
 
@@ -215,6 +216,9 @@ namespace gie {
         }
 
 
+        void mkdir(const char * path,  mode_t const& mode) {
+            GIE_UNIMPLEMENTED();
+        }
 
     };
 

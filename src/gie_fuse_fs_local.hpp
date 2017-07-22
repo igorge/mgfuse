@@ -47,6 +47,7 @@ namespace gie {
         using fuse_op_def_releasedir = fuse_method_def<fuse_op_implemented>;
         using fuse_op_def_readdir = fuse_method_def<fuse_op_implemented>;
 
+        using fuse_op_def_mkdir = fuse_method_def<>;
 
         typedef boost::filesystem::fstream * file_handle_type;
 

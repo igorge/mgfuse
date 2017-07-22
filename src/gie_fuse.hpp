@@ -186,25 +186,25 @@ namespace gie {
         }
 
 
-        internal_fuse_file_handle_type to_internal_fuse_handle(file_handle_type const& handle) noexcept {
+        static internal_fuse_file_handle_type to_internal_fuse_handle(file_handle_type const& handle) noexcept {
             BOOST_STATIC_ASSERT(std::is_pointer<file_handle_type>::value);
             BOOST_STATIC_ASSERT(sizeof(internal_fuse_file_handle_type)>=sizeof(file_handle_type));
 
             return reinterpret_cast<internal_fuse_file_handle_type>(handle); //allowed by c++11
         }
 
-        file_handle_type from_internal_fuse_handle(internal_fuse_file_handle_type const& handle) noexcept {
+        file_handle_type static from_internal_fuse_handle(internal_fuse_file_handle_type const& handle) noexcept {
             return reinterpret_cast<file_handle_type>(handle);
         }
 
-        internal_fuse_file_handle_type directory_to_internal_fuse_handle(directory_handle_type const& handle) noexcept {
+        internal_fuse_file_handle_type static directory_to_internal_fuse_handle(directory_handle_type const& handle) noexcept {
             BOOST_STATIC_ASSERT(std::is_pointer<file_handle_type>::value);
             BOOST_STATIC_ASSERT(sizeof(internal_fuse_file_handle_type)>=sizeof(directory_handle_type));
 
             return reinterpret_cast<internal_fuse_file_handle_type>(handle); //allowed by c++11
         }
 
-        directory_handle_type directory_from_internal_fuse_handle(internal_fuse_file_handle_type const& handle) noexcept {
+        directory_handle_type static directory_from_internal_fuse_handle(internal_fuse_file_handle_type const& handle) noexcept {
             return reinterpret_cast<directory_handle_type>(handle);
         }
 
@@ -258,9 +258,14 @@ namespace gie {
 
         static int fuse_op_getattr(const char * path, struct stat * st) noexcept {
             GIE_DEBUG_TRACE1(path);
+
             return run_with_filter<typename FuseImplementation::fuse_op_def_getattr>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->getattr(path, st);
+
+                GIE_CHECK(path);
+                GIE_CHECK(st);
+
+                data->impl().getattr(path, st);
                 return 0;
             });
         }
@@ -270,16 +275,29 @@ namespace gie {
             GIE_DEBUG_TRACE1(path);
             return run_with_filter<typename FuseImplementation::fuse_op_def_fgetattr>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->fgetattr(path, st, fi);
+
+                GIE_CHECK(path);
+                GIE_CHECK(st);
+                GIE_CHECK(fi);
+
+                data->impl().fgetattr(path, st, fi);
+
                 return 0;
             });
         }
 
         static int fuse_op_open(const char * path, struct fuse_file_info * fi) noexcept {
             GIE_DEBUG_TRACE1(path);
+
             return run_with_filter<typename FuseImplementation::fuse_op_def_open>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->open(path, fi);
+
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+                GIE_CHECK( !(fi->flags & O_CREAT) );
+
+                fi->fh=to_internal_fuse_handle(data->impl().open(path, fi));
+
                 return 0;
             });
         }
@@ -288,7 +306,14 @@ namespace gie {
             GIE_DEBUG_TRACE1(path);
             return run_with_filter<typename FuseImplementation::fuse_op_def_release>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->release(path, fi);
+
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+
+                GIE_CHECK(fi->fh);
+
+                data->impl().release(path, fi, from_internal_fuse_handle(fi->fh));
+
                 return 0;
             });
         }
@@ -298,7 +323,13 @@ namespace gie {
             GIE_DEBUG_TRACE1(path);
             return run_with_filter<typename FuseImplementation::fuse_op_def_opendir>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->opendir(path, fi);
+
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+                GIE_CHECK(!fi->fh);
+
+                fi->fh=directory_to_internal_fuse_handle(data->impl().opendir(path, fi));
+
                 return 0;
             });
         }
@@ -308,7 +339,14 @@ namespace gie {
             GIE_DEBUG_TRACE1(path);
             return run_with_filter<typename FuseImplementation::fuse_op_def_readdir>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->readdir(path, buf, filler, offset, fi);
+
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+
+                GIE_CHECK(fi->fh);
+
+                data->impl().readdir(path, buf, filler, offset, fi, directory_from_internal_fuse_handle(fi->fh));
+
                 return 0;
             });
         }
@@ -318,7 +356,14 @@ namespace gie {
 
             return run_with_filter<typename FuseImplementation::fuse_op_def_releasedir>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->releasedir(path, fi);
+
+                GIE_CHECK(path);
+                GIE_CHECK(fi);
+
+                GIE_CHECK(fi->fh);
+
+                data->impl().releasedir(path, fi, directory_from_internal_fuse_handle(fi->fh));
+
                 return 0;
             });
         }
@@ -326,127 +371,17 @@ namespace gie {
         static int fuse_op_mkdir(const char* path, mode_t mode) noexcept {
             GIE_DEBUG_TRACE1(path);
 
-            return fuse_ctx_run([&](self_t * const data){
+            return run_with_filter<typename FuseImplementation::fuse_op_def_mkdir>([&](self_t * const data){
                 data->assert_cookie_is_valid();
-                data->mkdir(path, mode);
+
+                GIE_CHECK(path);
+
+                data->impl().mkdir(path, mode);
+
                 return 0;
             });
+
         }
-
-
-        void getattr(const char * path, struct stat * st) {
-            if constexpr( FuseImplementation::fuse_op_def_getattr::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(st);
-
-                impl().getattr(path, st);
-            } else {
-                (void)path;
-                (void)st;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-        void fgetattr(const char * path, struct stat * st, struct fuse_file_info * fi) {
-            if constexpr( FuseImplementation::fuse_op_def_fgetattr::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(st);
-                GIE_CHECK(fi);
-
-                impl().fgetattr(path, st, fi);
-            } else {
-                (void)path;
-                (void)st;
-                (void)fi;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-
-        void open(const char * path, struct fuse_file_info * fi) {
-            if constexpr( FuseImplementation::fuse_op_def_open::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(fi);
-                GIE_CHECK( !(fi->flags & O_CREAT) );
-
-                fi->fh=to_internal_fuse_handle(impl().open(path, fi));
-            } else {
-                (void)path;
-                (void)fi;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-
-        void release(const char * path, struct fuse_file_info * fi) {
-            if constexpr( FuseImplementation::fuse_op_def_release::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(fi);
-
-                GIE_CHECK(fi->fh);
-                impl().release(path, fi, from_internal_fuse_handle(fi->fh));
-            } else {
-                (void)path;
-                (void)fi;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-
-        void opendir(const char * path, struct fuse_file_info * fi) {
-            if constexpr( FuseImplementation::fuse_op_def_opendir::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(fi);
-                GIE_CHECK(!fi->fh);
-
-                fi->fh=directory_to_internal_fuse_handle(impl().opendir(path, fi));
-            } else {
-                (void)path;
-                (void)fi;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-
-        void releasedir(const char * path, struct fuse_file_info * fi) {
-            if constexpr( FuseImplementation::fuse_op_def_releasedir::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(fi);
-
-                GIE_CHECK(fi->fh);
-                impl().releasedir(path, fi, directory_from_internal_fuse_handle(fi->fh));
-            } else {
-                (void)path;
-                (void)fi;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-        void readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info * fi) {
-            if constexpr( FuseImplementation::fuse_op_def_readdir::is_implemented::value ) {
-                GIE_CHECK(path);
-                GIE_CHECK(fi);
-
-                GIE_CHECK(fi->fh);
-                impl().readdir(path, buf, filler, offset, fi, directory_from_internal_fuse_handle(fi->fh));
-            } else {
-                (void)path;
-                (void)buf;
-                (void)filler;
-                (void)offset;
-                (void)fi;
-
-                GIE_UNIMPLEMENTED();
-            }
-        }
-
-
 
 
     public:
@@ -468,6 +403,7 @@ namespace gie {
             GIE_GEN_FUSE_ENRTY(opendir);
             GIE_GEN_FUSE_ENRTY(releasedir);
             GIE_GEN_FUSE_ENRTY(readdir);
+            GIE_GEN_FUSE_ENRTY(mkdir);
         }
 
     };
