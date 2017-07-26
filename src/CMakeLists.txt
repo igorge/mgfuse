@@ -56,7 +56,8 @@ set(HEADER_FILES
         mega_node_cache.hpp
         gie_fuse.hpp
         gie_fuse_fs_local.hpp
-        mega_fuse.hpp)
+        mega_fuse.hpp
+        path_locker.hpp)
 
 
 set(SOURCE_FILES

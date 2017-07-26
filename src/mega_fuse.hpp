@@ -6,6 +6,7 @@
 #ifndef H_GUARD_MEGA_FUSE_2016_08_26_03_07
 #define H_GUARD_MEGA_FUSE_2016_08_26_03_07
 //================================================================================================================================================
+#include "path_locker.hpp"
 #include "mega_node_cache.hpp"
 #include "mega_iterator.hpp"
 #include "mega_future.hpp"
@@ -93,6 +94,9 @@ namespace gie {
             boost::mutex m_mega_lock;
             std::unique_ptr<mega::MegaApi> m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
 
+
+            locker::path_locker_t locker;
+
             auto mega() -> mega::MegaApi& {
                 this->is_cookie_valid();
                 assert(m_mega_api);
@@ -111,6 +115,10 @@ namespace gie {
         auto impl() -> impl_t& {
             assert(m_impl);
             return *m_impl;
+        }
+
+        auto& path_locker(){
+            return impl().locker;
         }
 
         auto mega() -> mega::MegaApi& {
@@ -158,12 +166,14 @@ namespace gie {
             assert(!path.empty());
             assert(fi);
 
+            auto scoped_lock = path_locker().lock(path);
+
             mutex::scoped_lock lock {impl().m_mega_lock};
 
             auto children = get_children(get_node(path));
             GIE_CHECK(children);
 
-             auto handle = std::unique_ptr<directory_handle_impl_t>(new directory_handle_impl_t{children});
+            auto handle = std::unique_ptr<directory_handle_impl_t>(new directory_handle_impl_t{children});
 
             return handle.release();
         }
