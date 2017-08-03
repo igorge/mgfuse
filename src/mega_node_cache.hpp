@@ -27,7 +27,6 @@ namespace gie {
         using shared_mega_node_t = std::shared_ptr<mega::MegaNode>;
 
     private:
-
         using path_type = boost::filesystem::path;
 
         mega_node_cache_t(mega_node_cache_t const&) = delete;
@@ -47,7 +46,11 @@ namespace gie {
         shared_mega_node_t m_root;
 
         void clear(){
-            m_root.reset();
+
+            self().synchronized([&]{
+                m_root.reset();
+            });
+
         }
 
         auto authorize(mega::MegaNode &node) -> std::unique_ptr<mega::MegaNode> {
@@ -60,19 +63,30 @@ namespace gie {
 
 
     public:
-        auto get_children(shared_mega_node_t const& node){
 
-            GIE_CHECK(node->isFolder());
+        template <typename NodeT>
+        auto get_children(NodeT& node){
 
-            std::shared_ptr<mega::MegaNodeList> children { mega().getChildren(node.get()) };
+            GIE_CHECK(node.isFolder());
+
+            std::shared_ptr<mega::MegaNodeList> children { mega().getChildren(&node) };
 
             GIE_CHECK(children);
 
             return children;
         }
+
+        template <typename NodeT>
+        auto get_child_by_name(NodeT& node, std::string const& name) {
+            GIE_CHECK(node.isFolder());
+
+            return shared_mega_node_t{ mega().getChildNode(&node, name.c_str()) };
+        }
+
+
     private:
 
-        auto get_node(shared_mega_node_t const& parent, path_type const p) -> shared_mega_node_t {
+        auto impl_get_node(shared_mega_node_t const& parent, path_type const p) -> shared_mega_node_t {
             auto const file_name = p.filename().string();   
 
             if (parent) {
@@ -81,8 +95,7 @@ namespace gie {
 
 //                GIE_DEBUG_LOG("Mega node query: "<< parent->getName() << "/" << file_name << ", parent access: " << mega().getAccess(parent.get()) );
 
-
-                shared_mega_node_t authorized_node{mega().getChildNode(parent.get(), file_name.c_str())};
+                auto authorized_node = get_child_by_name(*parent, file_name);
                 GIE_CHECK_EX(authorized_node, exception::fuse_no_such_file_or_directory() << gie::exception::error_str_einfo(file_name) );
 
                 GIE_CHECK( !authorized_node->getChildren() );
@@ -92,28 +105,38 @@ namespace gie {
             } else {
                 assert(file_name == "/");
 
-                if(!m_root){
+                return self().synchronized([&]{
 
-                    m_root.reset( self().mega().getRootNode() );
+                    if(!m_root){
 
-                    GIE_CHECK(m_root);
+                        m_root.reset( self().mega().getRootNode() );
 
-                }
+                        GIE_CHECK(m_root);
+                    }
 
-                return m_root;
+                    return m_root;
+                });
+
             }
         }
 
 
     public:
 
-        auto get_node(path_type const& p) {
+        auto get_node(path_type const& p) -> shared_mega_node_t {
+
+            self().assert_cookie_is_valid();
 
             shared_mega_node_t current_node = nullptr;
 
-            boost::for_each(p, [&](auto&& i){
-                current_node = get_node(current_node, i);
-            });
+            auto i = p.begin();
+            auto const& end = p.end();
+
+            while( i !=end ){
+                current_node = impl_get_node(current_node, *i);
+                if( !current_node ) break; // no need to search any further if component not found
+                ++i;
+            }
 
             return current_node;
         }

@@ -6,6 +6,8 @@
 #ifndef H_GUARD_MEGA_FUSE_2016_08_26_03_07
 #define H_GUARD_MEGA_FUSE_2016_08_26_03_07
 //================================================================================================================================================
+#include "gie/synchronized.hpp"
+
 #include "path_locker.hpp"
 #include "mega_node_cache.hpp"
 #include "mega_iterator.hpp"
@@ -44,7 +46,6 @@ namespace gie {
         using directory_handle_type = directory_handle_impl_t*;
 
         using path_type = boost::filesystem::path;
-        using mutex = boost::mutex;
 
         using stat_t = struct stat;
 
@@ -84,18 +85,21 @@ namespace gie {
 
     private:
 
-        struct impl_t : mega_node_cache_t<impl_t>, gie::cookie_checker<> {
+        struct impl_t
+                : mega_node_cache_t<impl_t>
+                , private gie::with_synchronized<>
+                , gie::cookie_checker<>
+        {
+
+            friend mega_node_cache_t<impl_t>;
 
             impl_t(impl_t const&) = delete;
             impl_t& operator=(impl_t const&) = delete;
 
             impl_t(){}
 
-            boost::mutex m_mega_lock;
             std::unique_ptr<mega::MegaApi> m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
 
-
-            locker::path_locker_t locker;
 
             auto mega() -> mega::MegaApi& {
                 this->is_cookie_valid();
@@ -117,10 +121,6 @@ namespace gie {
             return *m_impl;
         }
 
-        auto& path_locker(){
-            return impl().locker;
-        }
-
         auto mega() -> mega::MegaApi& {
             return impl().mega();
         }
@@ -130,22 +130,15 @@ namespace gie {
         }
 
         auto get_children(shared_mega_node_t const& node){
-            return impl().get_children(node);
+            return impl().get_children(*node);
         }
 
-        template <typename Fun>
-        decltype(auto) with_mega_lock(Fun&& fun){
-            mutex::scoped_lock lock {impl().m_mega_lock};
-            return fun();
-        }
 
     public:
 
 
         void getattr(path_type const& path, struct stat * st){
             assert(st);
-
-            mutex::scoped_lock lock {impl().m_mega_lock};
 
             auto const& node = get_node(path);
 
@@ -172,9 +165,6 @@ namespace gie {
             assert(!path.empty());
             assert(fi);
 
-            auto scoped_lock = path_locker().lock(path);
-
-            mutex::scoped_lock lock {impl().m_mega_lock};
 
             auto children = get_children(get_node(path));
             GIE_CHECK(children);
@@ -188,8 +178,6 @@ namespace gie {
             assert(path);
             assert(fi);
             assert(handle);
-
-            mutex::scoped_lock lock {impl().m_mega_lock};
 
             auto dir = std::unique_ptr<directory_handle_impl_t>(handle);
         }
@@ -239,13 +227,6 @@ namespace gie {
 
             GIE_CHECK(!parent_path.empty());
             GIE_CHECK(!name.empty());
-
-            auto scoped_lock = path_locker().lock(parent_path);
-            auto scoped_lock2 = path_locker().lock(path);
-
-            with_mega_lock([&]{
-
-            });
 
 //            mega().createFolder()
 
