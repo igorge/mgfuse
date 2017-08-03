@@ -1,3 +1,5 @@
+#include "path_locker.hpp"
+
 #include "gie_fuse_fs_local.hpp"
 #include "mega_fuse.hpp"
 

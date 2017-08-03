@@ -129,11 +129,16 @@ namespace gie {
                 data->is_cookie_valid();
 
                 return fun(data);
+
             } catch (gie::exception::unimplemented const& e) {
                 GIE_LOG( "\n======= UNIMPLEMENTED =======\n" << diagnostic_information(e) );
                 return -EOPNOTSUPP;
-            } catch( exception::fuse_no_such_file_or_directory const & e ) {
-                return -ENOENT;
+
+            } catch( exception::fuse_errorno_exception const e ){
+                auto const err = e.get_errno();
+                assert(err);
+                return -err;
+
             } catch( boost::exception const & e ) {
                 GIE_LOG( "\n======= uncaught exception =======\n" << diagnostic_information(e) );
 
@@ -146,6 +151,7 @@ namespace gie {
             } catch( std::exception const & e ) {
                 GIE_LOG( "\n======= uncaught exception =======\n" << typeid(e).name() << "\n" << e.what() );
                 return -EREMOTEIO;
+
             } catch( ... ) {
                 GIE_LOG( "\n======= unknown uncaught exception =======" );
                 return -EREMOTEIO;

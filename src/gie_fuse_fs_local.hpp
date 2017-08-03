@@ -101,9 +101,9 @@ namespace gie {
             if( ::stat( (m_root / path).c_str() , st ) ==-1) {
                 auto const status = errno;
                 if (status==ENOENT) {
-                    GIE_THROW(exception::fuse_no_such_file_or_directory());
+                    BOOST_THROW_EXCEPTION(exception::fuse_no_such_file_or_directory());
                 } else {
-                    GIE_THROW( exception::fuse_stat_failed() << exception::fuse_errorno_einfo(status));
+                    GIE_THROW( exception::fuse_errorno_exception(status) );
                 }
             }
         }

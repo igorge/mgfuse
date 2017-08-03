@@ -133,6 +133,12 @@ namespace gie {
             return impl().get_children(node);
         }
 
+        template <typename Fun>
+        decltype(auto) with_mega_lock(Fun&& fun){
+            mutex::scoped_lock lock {impl().m_mega_lock};
+            return fun();
+        }
+
     public:
 
 
@@ -226,7 +232,24 @@ namespace gie {
         }
 
 
-        void mkdir(const char * path,  mode_t const& mode) {
+        void mkdir(boost::filesystem::path const& path,  mode_t const& mode) {
+
+            auto const parent_path = path.parent_path();
+            auto const name = path.filename();
+
+            GIE_CHECK(!parent_path.empty());
+            GIE_CHECK(!name.empty());
+
+            auto scoped_lock = path_locker().lock(parent_path);
+            auto scoped_lock2 = path_locker().lock(path);
+
+            with_mega_lock([&]{
+
+            });
+
+//            mega().createFolder()
+
+
             GIE_UNIMPLEMENTED();
         }
 
