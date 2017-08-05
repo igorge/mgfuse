@@ -389,6 +389,21 @@ namespace gie {
 
         }
 
+        static int fuse_op_rmdir(const char* path) noexcept {
+            GIE_DEBUG_TRACE1(path);
+
+            return run_with_filter<typename FuseImplementation::fuse_op_def_rmdir>([&](self_t * const data){
+                data->assert_cookie_is_valid();
+
+                GIE_CHECK(path);
+
+                data->impl().rmdir(path);
+
+                return 0;
+            });
+
+        }
+
 
     public:
         fuse_api_mapper_t(FuseImplementation&& fi) : m_fuse_imp(std::move(fi)) {
@@ -410,6 +425,7 @@ namespace gie {
             GIE_GEN_FUSE_ENRTY(releasedir);
             GIE_GEN_FUSE_ENRTY(readdir);
             GIE_GEN_FUSE_ENRTY(mkdir);
+            GIE_GEN_FUSE_ENRTY(rmdir);
         }
 
     };

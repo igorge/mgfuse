@@ -35,6 +35,7 @@ namespace gie {
         using fuse_op_def_readdir = fuse_method_def<fuse_op_implemented>;
 
         using fuse_op_def_mkdir = fuse_method_def<fuse_op_implemented>;
+        using fuse_op_def_rmdir = fuse_method_def<fuse_op_implemented>;
 
         struct file_handle_impl_t;
 
@@ -248,6 +249,19 @@ namespace gie {
             listener.future().wait_for( timeout() );
 
         }
+
+        void rmdir(boost::filesystem::path const& path) {
+            auto const parent_path = path.parent_path();
+            auto const name = path.filename();
+
+            GIE_CHECK(!parent_path.empty());
+            GIE_CHECK(!name.empty());
+
+            auto parent_node = get_node(parent_path);
+
+            GIE_UNIMPLEMENTED();
+        }
+
 
     };
 
