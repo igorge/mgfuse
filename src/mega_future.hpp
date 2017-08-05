@@ -33,6 +33,7 @@ namespace gie {
     private:
         using ResultT = typename std::invoke_result<OnCompleteFun, mega::MegaApi*, mega::MegaRequest *>::type;
         std::promise<ResultT> m_promise;
+        std::future<ResultT>  m_future = m_promise.get_future();
         bool m_delete_on_finish;
         OnCompleteFun const m_fun;
 
@@ -84,8 +85,8 @@ namespace gie {
 
         ~mega_listener_t(){}
 
-        decltype(auto) future(){
-            return m_promise.get_future();
+        auto& future(){
+            return m_future;
         }
 
     };
