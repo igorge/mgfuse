@@ -9,6 +9,7 @@
 //#pragma once
 //================================================================================================================================================
 
+#include "gie/future.hpp"
 #include "mega_exception.hpp"
 
 #include "gie/util-scope-exit.hpp"
@@ -20,6 +21,7 @@
 #include "boost/thread/future.hpp"
 
 #include <memory>
+#include <type_traits>
 //================================================================================================================================================
 namespace gie {
 
@@ -30,7 +32,7 @@ namespace gie {
 
     private:
         using ResultT = typename std::invoke_result<OnCompleteFun, mega::MegaApi*, mega::MegaRequest *>::type;
-        boost::promise<ResultT> m_promise;
+        std::promise<ResultT> m_promise;
         bool m_delete_on_finish;
         OnCompleteFun const m_fun;
 
@@ -40,7 +42,8 @@ namespace gie {
             GIE_DEBUG_TRACE();
 
         };
-        virtual void onRequestFinish(mega::MegaApi* api, mega::MegaRequest *request, mega::MegaError* error){
+
+        void onRequestFinish(mega::MegaApi* api, mega::MegaRequest *request, mega::MegaError* error) override {
             GIE_DEBUG_TRACE();
 
             GIE_SCOPE_EXIT([this]{
@@ -50,45 +53,49 @@ namespace gie {
                 }
             });
 
-
-
-            try {
+            gie::fulfill_promise(m_promise, [&]{
                 GIE_MEGA_CHECK(*error);
 
-                m_promise.set_value(m_fun(api, request));
-
-            }catch (...){
-                m_promise.set_exception(boost::current_exception());
-            }
+                return m_fun(api, request);
+            });
         }
-        virtual void onRequestUpdate(mega:: MegaApi*api, mega::MegaRequest *request){
+
+        void onRequestUpdate(mega:: MegaApi*api, mega::MegaRequest *request) override {
             GIE_DEBUG_TRACE();
 
         }
-        virtual void onRequestTemporaryError(mega::MegaApi *api, mega::MegaRequest *request, mega::MegaError* error){
+
+        void onRequestTemporaryError(mega::MegaApi *api, mega::MegaRequest *request, mega::MegaError* error) override {
             GIE_DEBUG_TRACE();
+
+            gie::fulfill_promise(m_promise, [&]() -> ResultT {
+                GIE_UNIMPLEMENTED();
+            });
 
         }
 
         template <class U>
-        explicit mega_listener_t(U&& fun, bool delete_on_finish=true)
+        explicit mega_listener_t(U&& fun, bool delete_on_finish=false)
                 : m_delete_on_finish (delete_on_finish)
                 , m_fun(std::forward<U>(fun))
         {
 
         }
 
-        ~mega_listener_t(){
-            //m_promise.
-        }
+        ~mega_listener_t(){}
 
-        auto future(){
+        decltype(auto) future(){
             return m_promise.get_future();
         }
 
-
-
     };
+
+
+    template <typename Fun>
+    mega_listener_t(Fun fun, bool del_on_exit) -> mega_listener_t< Fun >;
+
+    template <typename Fun>
+    mega_listener_t(Fun fun) -> mega_listener_t< Fun >;
 
 
     template <class Fun>

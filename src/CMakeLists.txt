@@ -57,6 +57,7 @@ set(HEADER_FILES
         gie_fuse.hpp
         gie_fuse_fs_local.hpp
         mega_fuse.hpp
+        mega_future.hpp
         path_locker.hpp)
 
 

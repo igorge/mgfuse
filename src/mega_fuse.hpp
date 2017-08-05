@@ -59,23 +59,21 @@ namespace gie {
         explicit mega_fuse_impl(std::string const& login, std::string const& password){
             m_impl->m_mega_api->setLogLevel(mega::MegaApi::LOG_LEVEL_INFO);
 
-            auto const ignore_result_value = [](auto&&, auto&&){ return true;};
-
             {
-                auto listener = make_listener(ignore_result_value);
-                auto f = listener->future();
-                mega().login(login.c_str(), password.c_str(), listener.release());
+                mega_listener_t listener{[](auto&&, auto&&){ }};
+                mega().login(login.c_str(), password.c_str(), &listener);
+
                 GIE_DEBUG_LOG("waiting for login");
-                f.get();
+                listener.future().wait();
                 GIE_DEBUG_LOG("login successful");
             }
 
             {
-                auto listener = make_listener(ignore_result_value);
-                auto f = listener->future();
-                mega().fetchNodes(listener.release());
+                mega_listener_t listener{[](auto&&, auto&&){ }};
+                mega().fetchNodes(&listener);
+
                 GIE_DEBUG_LOG("waiting for fetchNodes()");
-                f.get();
+                listener.future().wait();
                 GIE_DEBUG_LOG("fetchNodes() successful");
             }
 
@@ -98,8 +96,9 @@ namespace gie {
 
             impl_t(){}
 
-            std::unique_ptr<mega::MegaApi> m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
+            std::unique_ptr<mega::MegaApi> const m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
 
+            std::chrono::seconds const timeout{30};
 
             auto mega() -> mega::MegaApi& {
                 this->is_cookie_valid();
@@ -121,6 +120,11 @@ namespace gie {
             return *m_impl;
         }
 
+        auto impl() const -> impl_t& {
+            assert(m_impl);
+            return *m_impl;
+        }
+
         auto mega() -> mega::MegaApi& {
             return impl().mega();
         }
@@ -131,6 +135,10 @@ namespace gie {
 
         auto get_children(shared_mega_node_t const& node){
             return impl().get_children(*node);
+        }
+
+        auto& timeout() const {
+            return impl().timeout;
         }
 
 
@@ -228,10 +236,17 @@ namespace gie {
             GIE_CHECK(!parent_path.empty());
             GIE_CHECK(!name.empty());
 
-//            mega().createFolder()
+            auto parent_node = get_node(parent_path);
+
+            GIE_CHECK_EX(parent_node, exception::fuse_no_such_file_or_directory());
 
 
-            GIE_UNIMPLEMENTED();
+            mega_listener_t listener{[](auto&&, auto&&){ }};
+
+            mega().createFolder(name.c_str(), parent_node.get(), &listener);
+
+            listener.future().wait_for( timeout() );
+
         }
 
     };
