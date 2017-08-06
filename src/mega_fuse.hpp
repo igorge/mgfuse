@@ -246,20 +246,26 @@ namespace gie {
 
             mega().createFolder(name.c_str(), parent_node.get(), &listener);
 
-            listener.future().wait_for( timeout() );
+            auto const r = listener.future().wait_for( timeout() );
+            GIE_CHECK(r == std::future_status::ready);
+            listener.future().get();
 
         }
 
         void rmdir(boost::filesystem::path const& path) {
-            auto const parent_path = path.parent_path();
-            auto const name = path.filename();
 
-            GIE_CHECK(!parent_path.empty());
-            GIE_CHECK(!name.empty());
+            auto node = get_node(path);
 
-            auto parent_node = get_node(parent_path);
+            GIE_CHECK_EX(node, exception::fuse_no_such_file_or_directory());
+            GIE_CHECK_EX(node->isFolder(), exception::fuse_not_a_directory());
 
-            GIE_UNIMPLEMENTED();
+            mega_listener_t listener{[](auto&&, auto&&){ }};
+
+            mega().remove(node.get(), &listener);
+
+            auto const r = listener.future().wait_for( timeout() );
+            GIE_CHECK(r == std::future_status::ready);
+            listener.future().get();
         }
 
 

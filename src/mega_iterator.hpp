@@ -61,7 +61,7 @@ namespace gie {
 
         }
 
-        auto const dereference() const -> value_type {
+        auto dereference() const -> value_type {
             auto node = m_node_list->get(m_idx);
             assert(node);
             return node;
