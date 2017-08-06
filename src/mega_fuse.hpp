@@ -22,6 +22,26 @@
 //================================================================================================================================================
 namespace gie {
 
+    template <typename MegaFun, typename OnCompleteFun>
+    decltype(auto) mega_wait(std::chrono::seconds const& timeout, MegaFun&& fun, OnCompleteFun&& on_complete){
+
+        auto listener = make_listener( std::forward<OnCompleteFun>(on_complete) );
+        auto f = listener->get_future();
+
+        fun(listener);
+
+        auto const r = f.wait_for( timeout );
+        GIE_CHECK(r == std::future_status::ready);
+
+        return f.get();
+    }
+
+    template <typename MegaFun>
+    decltype(auto) mega_wait(std::chrono::seconds const& timeout, MegaFun&& fun){
+        return mega_wait(timeout, std::forward<MegaFun>(fun), [](auto&&, auto&&){} );
+    }
+
+
     struct mega_fuse_impl {
 
         using fuse_op_def_getattr = fuse_method_def<fuse_op_implemented>;
@@ -48,6 +68,8 @@ namespace gie {
 
         using path_type = boost::filesystem::path;
 
+
+
         using stat_t = struct stat;
 
         mega_fuse_impl(const mega_fuse_impl&) = delete;
@@ -60,23 +82,16 @@ namespace gie {
         explicit mega_fuse_impl(std::string const& login, std::string const& password){
             m_impl->m_mega_api->setLogLevel(mega::MegaApi::LOG_LEVEL_INFO);
 
-            {
-                mega_listener_t listener{[](auto&&, auto&&){ }};
-                mega().login(login.c_str(), password.c_str(), &listener);
+            auto const timeout = std::chrono::seconds{30};
 
-                GIE_DEBUG_LOG("waiting for login");
-                listener.future().wait();
-                GIE_DEBUG_LOG("login successful");
-            }
+            GIE_DEBUG_LOG("waiting for login");
+            mega_wait( timeout, [&](auto&& l){ mega().login(login.c_str(), password.c_str(), l.release()); });
+            GIE_DEBUG_LOG("login successful");
 
-            {
-                mega_listener_t listener{[](auto&&, auto&&){ }};
-                mega().fetchNodes(&listener);
 
-                GIE_DEBUG_LOG("waiting for fetchNodes()");
-                listener.future().wait();
-                GIE_DEBUG_LOG("fetchNodes() successful");
-            }
+            GIE_DEBUG_LOG("waiting for fetchNodes()");
+            mega_wait( timeout, [&](auto&& l){ mega().fetchNodes(l.release()); });
+            GIE_DEBUG_LOG("fetchNodes() successful");
 
         }
 
@@ -241,15 +256,7 @@ namespace gie {
 
             GIE_CHECK_EX(parent_node, exception::fuse_no_such_file_or_directory());
 
-
-            mega_listener_t listener{[](auto&&, auto&&){ }};
-
-            mega().createFolder(name.c_str(), parent_node.get(), &listener);
-
-            auto const r = listener.future().wait_for( timeout() );
-            GIE_CHECK(r == std::future_status::ready);
-            listener.future().get();
-
+            mega_wait( timeout(), [&](auto&& l){ mega().createFolder(name.c_str(), parent_node.get(), l.release()); } );
         }
 
         void rmdir(boost::filesystem::path const& path) {
@@ -259,13 +266,7 @@ namespace gie {
             GIE_CHECK_EX(node, exception::fuse_no_such_file_or_directory());
             GIE_CHECK_EX(node->isFolder(), exception::fuse_not_a_directory());
 
-            mega_listener_t listener{[](auto&&, auto&&){ }};
-
-            mega().remove(node.get(), &listener);
-
-            auto const r = listener.future().wait_for( timeout() );
-            GIE_CHECK(r == std::future_status::ready);
-            listener.future().get();
+            mega_wait( timeout(), [&](auto&& l){ mega().remove(node.get(), l.release()); } );
         }
 
 
