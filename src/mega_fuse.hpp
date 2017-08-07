@@ -23,9 +23,9 @@
 namespace gie {
 
     template <typename MegaFun, typename OnCompleteFun>
-    decltype(auto) mega_wait(std::chrono::seconds const& timeout, MegaFun&& fun, OnCompleteFun&& on_complete){
+    decltype(auto) mega_request_wait(std::chrono::seconds const& timeout, MegaFun&& fun, OnCompleteFun&& on_complete){
 
-        auto listener = make_listener( std::forward<OnCompleteFun>(on_complete) );
+        auto listener = make_request_listener(std::forward<OnCompleteFun>(on_complete));
         auto f = listener->get_future();
 
         fun(listener);
@@ -37,8 +37,8 @@ namespace gie {
     }
 
     template <typename MegaFun>
-    decltype(auto) mega_wait(std::chrono::seconds const& timeout, MegaFun&& fun){
-        return mega_wait(timeout, std::forward<MegaFun>(fun), [](auto&&, auto&&){} );
+    decltype(auto) mega_request_wait(std::chrono::seconds const &timeout, MegaFun &&fun){
+        return mega_request_wait(timeout, std::forward<MegaFun>(fun), [](auto&&, auto&&){} );
     }
 
 
@@ -85,12 +85,12 @@ namespace gie {
             auto const timeout = std::chrono::seconds{30};
 
             GIE_DEBUG_LOG("waiting for login");
-            mega_wait( timeout, [&](auto&& l){ mega().login(login.c_str(), password.c_str(), l.release()); });
+            mega_request_wait(timeout, [&](auto &&l) { mega().login(login.c_str(), password.c_str(), l.release()); });
             GIE_DEBUG_LOG("login successful");
 
 
             GIE_DEBUG_LOG("waiting for fetchNodes()");
-            mega_wait( timeout, [&](auto&& l){ mega().fetchNodes(l.release()); });
+            mega_request_wait(timeout, [&](auto &&l) { mega().fetchNodes(l.release()); });
             GIE_DEBUG_LOG("fetchNodes() successful");
 
         }
@@ -256,7 +256,8 @@ namespace gie {
 
             GIE_CHECK_EX(parent_node, exception::fuse_no_such_file_or_directory());
 
-            mega_wait( timeout(), [&](auto&& l){ mega().createFolder(name.c_str(), parent_node.get(), l.release()); } );
+            mega_request_wait(timeout(),
+                              [&](auto &&l) { mega().createFolder(name.c_str(), parent_node.get(), l.release()); });
         }
 
         void rmdir(boost::filesystem::path const& path) {
@@ -266,7 +267,7 @@ namespace gie {
             GIE_CHECK_EX(node, exception::fuse_no_such_file_or_directory());
             GIE_CHECK_EX(node->isFolder(), exception::fuse_not_a_directory());
 
-            mega_wait( timeout(), [&](auto&& l){ mega().remove(node.get(), l.release()); } );
+            mega_request_wait(timeout(), [&](auto &&l) { mega().remove(node.get(), l.release()); });
         }
 
 

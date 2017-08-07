@@ -26,17 +26,17 @@
 namespace gie {
 
     template <class OnCompleteFun>
-    struct mega_listener_t : mega::MegaRequestListener, gie::cookie_checker<> {
+    struct mega_request_listener_t
+            : mega::MegaRequestListener
+            , gie::cookie_checker<>
+    {
 
         static_assert(std::is_class<OnCompleteFun>::value);
 
     private:
         using ResultT = typename std::invoke_result<OnCompleteFun, mega::MegaApi*, mega::MegaRequest *>::type;
         std::promise<ResultT> m_promise;
-        //std::future<ResultT>  m_future = m_promise.get_future();
-//        bool m_delete_on_finish;
         OnCompleteFun const m_fun;
-
     public:
 
         void onRequestStart(mega::MegaApi* api, mega::MegaRequest *request) override {
@@ -50,10 +50,8 @@ namespace gie {
             assert_cookie_is_valid();
 
             GIE_SCOPE_EXIT([this]{
-//                if (m_delete_on_finish) {
-                    GIE_DEBUG_LOG("Deleting 'mega_listener_t' in 'onRequestFinish()'");
-                    delete this;
-//                }
+                GIE_DEBUG_LOG("Deleting 'mega_request_listener_t' in 'onRequestFinish()'");
+                delete this;
             });
 
             gie::fulfill_promise(m_promise, [&]{
@@ -73,21 +71,16 @@ namespace gie {
             GIE_DEBUG_TRACE();
             assert_cookie_is_valid();
 
-            gie::fulfill_promise(m_promise, [&]() -> ResultT {
-                GIE_UNIMPLEMENTED();
-            });
-
+            gie::fulfill_promise(m_promise, [&]() -> ResultT { GIE_UNIMPLEMENTED(); });
         }
 
         template <class U>
-        explicit mega_listener_t(U&& fun)
-//                : m_delete_on_finish (delete_on_finish)
+        explicit mega_request_listener_t(U&& fun)
                 : m_fun(std::forward<U>(fun))
         {
-
         }
 
-        ~mega_listener_t(){
+        ~mega_request_listener_t(){
             assert_cookie_is_valid();
         }
 
@@ -100,21 +93,93 @@ namespace gie {
     };
 
 
-//    template <typename Fun>
-//    mega_listener_t(Fun fun, bool del_on_exit) -> mega_listener_t< Fun >;
-//
-//    template <typename Fun>
-//    mega_listener_t(Fun fun) -> mega_listener_t< Fun >;
-
 
     template <class Fun>
-    auto make_listener(Fun&& fun){
+    auto make_request_listener(Fun &&fun){
 
         using FunT = std::remove_reference_t<Fun>;
 
         static_assert(std::is_class<FunT>::value);
 
-        return std::make_unique< mega_listener_t<FunT> >( std::forward<Fun>(fun));
+        return std::make_unique< mega_request_listener_t<FunT> >( std::forward<Fun>(fun));
+    }
+
+
+//================================================================================================================================================
+
+
+    template <typename OnCompleteFun>
+    struct mega_transfer_listener_t
+            : gie::cookie_checker<>
+            , mega::MegaTransferListener {
+
+        static_assert(std::is_class<OnCompleteFun>::value);
+
+        void onTransferStart(mega::MegaApi *api, mega::MegaTransfer *transfer) override {
+            assert_cookie_is_valid();
+        }
+
+        void onTransferFinish(mega::MegaApi *api, mega::MegaTransfer *transfer, mega::MegaError *error) override {
+            assert_cookie_is_valid();
+
+            GIE_SCOPE_EXIT([this]{
+                GIE_DEBUG_LOG("Deleting 'mega_transfer_listener_t' in 'onRequestFinish()'");
+                delete this;
+            });
+
+            gie::fulfill_promise(m_promise, [&]{
+                GIE_MEGA_CHECK(*error);
+
+                return m_fun(api, transfer);
+            });
+        }
+
+        void onTransferUpdate(mega::MegaApi *api, mega::MegaTransfer *transfer) override {
+            assert_cookie_is_valid();
+        }
+
+        void onTransferTemporaryError(mega::MegaApi *api, mega::MegaTransfer *transfer, mega::MegaError *error) override {
+            assert_cookie_is_valid();
+        }
+
+        ~mega_transfer_listener_t() override {
+        }
+
+        bool onTransferData(mega::MegaApi *api, mega::MegaTransfer *transfer, char *buffer, size_t size) override {
+            assert_cookie_is_valid();
+
+            return true;
+        }
+
+        auto get_future(){
+            assert_cookie_is_valid();
+
+            return m_promise.get_future();
+        }
+
+        template <class U>
+        explicit mega_transfer_listener_t(U&& fun)
+            : m_fun(std::forward<U>(fun))
+        {
+        }
+
+    private:
+        using ResultT = typename std::invoke_result<OnCompleteFun, mega::MegaApi*, mega::MegaTransfer*>::type;
+
+        std::promise<ResultT> m_promise;
+        OnCompleteFun const m_fun;
+
+    };
+
+
+    template <class Fun>
+    auto make_transfer_listener(Fun &&fun){
+
+        using FunT = std::remove_reference_t<Fun>;
+
+        static_assert(std::is_class<FunT>::value);
+
+        return std::make_unique< mega_transfer_listener_t<FunT> >( std::forward<Fun>(fun));
     }
 
 
