@@ -13,14 +13,19 @@
 
 #include "megaapi.h"
 
+#include "gie/self_impl.hpp"
+
 #include <boost/range/algorithm.hpp>
 
 #include <memory>
 //================================================================================================================================================
 namespace gie {
 
+
+
     template<class SelfT>
-    struct mega_node_cache_t {
+    struct mega_node_resolver_t : self_impl<mega_node_resolver_t<SelfT>, SelfT>{
+        using self_impl<mega_node_resolver_t<SelfT>, SelfT>::self;
 
         friend SelfT;
 
@@ -29,13 +34,18 @@ namespace gie {
     private:
         using path_type = boost::filesystem::path;
 
-        mega_node_cache_t(mega_node_cache_t const&) = delete;
-        mega_node_cache_t& operator=(mega_node_cache_t const&) = delete;
+        template <typename Fun>
+        decltype(auto) synchronized(Fun&& fun){
+            return self().synchronized(std::forward<Fun>(fun));
+        }
 
-        mega_node_cache_t(){}
 
-        decltype(auto) self() {
-            return (*static_cast<SelfT *>(this));
+        mega_node_resolver_t(mega_node_resolver_t const&) = delete;
+        mega_node_resolver_t& operator=(mega_node_resolver_t const&) = delete;
+
+        mega_node_resolver_t()
+        {
+
         }
 
         decltype(auto) mega(){
@@ -47,7 +57,7 @@ namespace gie {
 
         void clear(){
 
-            self().synchronized([&]{
+            synchronized([&]{
                 m_root.reset();
             });
 
@@ -86,7 +96,7 @@ namespace gie {
 
     private:
 
-        auto impl_get_node(shared_mega_node_t const& parent, path_type const p) -> shared_mega_node_t {
+        auto impl_get_node(shared_mega_node_t const& parent, path_type const& p) -> shared_mega_node_t {
             auto const file_name = p.filename().string();   
 
             if (parent) {

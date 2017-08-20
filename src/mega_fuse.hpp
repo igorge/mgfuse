@@ -6,10 +6,12 @@
 #ifndef H_GUARD_MEGA_FUSE_2016_08_26_03_07
 #define H_GUARD_MEGA_FUSE_2016_08_26_03_07
 //================================================================================================================================================
+#include "files_table.hpp"
+
 #include "gie/synchronized.hpp"
 
 #include "path_locker.hpp"
-#include "mega_node_cache.hpp"
+#include "mega_node_resolver.hpp"
 #include "mega_iterator.hpp"
 #include "mega_future.hpp"
 #include "gie_fuse.hpp"
@@ -47,7 +49,7 @@ namespace gie {
         using fuse_op_def_getattr = fuse_method_def<fuse_op_implemented>;
         using fuse_op_def_fgetattr = fuse_method_def<>;
 
-        using fuse_op_def_open = fuse_method_def<>;
+        using fuse_op_def_open = fuse_method_def<fuse_op_implemented>;
         using fuse_op_def_release = fuse_method_def<>;
 
         using fuse_op_def_opendir = fuse_method_def<fuse_op_implemented>;
@@ -79,7 +81,14 @@ namespace gie {
             m_impl.swap(other.m_impl);
         }
 
-        explicit mega_fuse_impl(std::string const& login, std::string const& password){
+
+        template <class PathType>
+        explicit mega_fuse_impl(
+                std::string const& login,
+                std::string const& password,
+                PathType&& temp_dir)
+            :  m_impl( std::make_unique<impl_t>( std::forward<PathType>(temp_dir) ) )
+        {
             m_impl->m_mega_api->setLogLevel(mega::MegaApi::LOG_LEVEL_INFO);
 
             auto const timeout = std::chrono::seconds{30};
@@ -100,17 +109,25 @@ namespace gie {
     private:
 
         struct impl_t
-                : mega_node_cache_t<impl_t>
+                : mega_node_resolver_t<impl_t>
                 , private gie::with_synchronized<>
                 , gie::cookie_checker<>
+                , mega_files_table<impl_t>
         {
 
-            friend mega_node_cache_t<impl_t>;
+            using gie::with_synchronized<>::synchronized;
+
+            friend mega_node_resolver_t<impl_t>;
 
             impl_t(impl_t const&) = delete;
             impl_t& operator=(impl_t const&) = delete;
 
-            impl_t(){}
+            template <class PathType>
+            explicit impl_t(PathType&& path)
+                    : m_temp_dir( std::forward<PathType>(path) )
+            {
+                create_directories(m_temp_dir);
+            }
 
             std::unique_ptr<mega::MegaApi> const m_mega_api = std::make_unique<mega::MegaApi>("BhU0CKAT", (const char*) nullptr, "MEGA/SDK FUSE filesystem");
 
@@ -125,11 +142,14 @@ namespace gie {
             ~impl_t(){
                 this->clear();
             }
+
+        private:
+            boost::filesystem::path m_temp_dir;
         };
 
         using shared_mega_node_t = impl_t::shared_mega_node_t;
 
-        std::unique_ptr<impl_t> m_impl = std::make_unique<impl_t>();
+        std::unique_ptr<impl_t> m_impl;
 
         auto impl() -> impl_t& {
             assert(m_impl);
@@ -159,6 +179,22 @@ namespace gie {
 
 
     public:
+
+
+        struct file_handle_impl_t {
+
+        };
+
+        file_handle_impl_t* open(path_type const& path, fuse_file_info * fi){
+            assert(fi);
+
+            //auto const& node = get_node(path);
+//            GIE_CHECK_EX(!node->isFolder(), exception::fuse_is_a_directory());
+
+
+
+            GIE_UNIMPLEMENTED();
+        }
 
 
         void getattr(path_type const& path, struct stat * st){

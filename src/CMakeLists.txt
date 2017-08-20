@@ -16,10 +16,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DNDEBUG -O2 -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -DNDEBUG -Os")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-deprecated -Wno-unused-parameter")
 
-find_package(Boost COMPONENTS filesystem system thread serialization date_time locale)
+find_package(Boost COMPONENTS filesystem system date_time locale)
 ############################################################################
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
@@ -62,12 +65,16 @@ include_directories(
 ############################################################################
 
 set(HEADER_FILES
-        mega_node_cache.hpp
+        mega_node_resolver.hpp
         gie_fuse.hpp
         gie_fuse_fs_local.hpp
         mega_fuse.hpp
         mega_future.hpp
-        path_locker.hpp)
+        path_locker.hpp
+        exceptions.hpp
+        mega_exception.hpp
+        mega_iterator.hpp
+        files_table.hpp)
 
 
 set(SOURCE_FILES

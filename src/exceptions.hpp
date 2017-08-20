@@ -41,6 +41,10 @@ namespace gie {
             fuse_not_a_directory () : fuse_errorno_exception(ENOTDIR) {}
         };
 
+        struct fuse_is_a_directory : fuse_errorno_exception {
+            fuse_is_a_directory () : fuse_errorno_exception(EISDIR) {}
+        };
+
         struct fuse_exists : fuse_errorno_exception {
             fuse_exists() : fuse_errorno_exception(EEXIST) {}
         };

@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
         //gie::fuse_api_mapper_t<gie::fuse_fs_local> fuse_mapper{gie::fuse_fs_local("/home")};
 
-        gie::fuse_api_mapper_t fuse_mapper{gie::mega_fuse_impl(argv[2], argv[3])};
+        gie::fuse_api_mapper_t fuse_mapper{gie::mega_fuse_impl(argv[2], argv[3], "/tmp/mgfuse-tmp")};
 
         std::array< char const *, 3 > const fuseargv = {{ argv[0], "-f", argv[1] }};
         auto const& fuse_stat = fuse_main(fuseargv.size(), const_cast<char**>(fuseargv.data()), fuse_mapper.internal_fuse_operation(), &fuse_mapper);
